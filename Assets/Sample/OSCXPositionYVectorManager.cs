@@ -545,11 +545,11 @@ public class OSCXPositionYVectorManager : MonoBehaviour
         // 前進のみモード中の場合
         if (_isForwardOnlyMode)
         {
-            // 前進が来たらカウント
-            if (isForward)
+            // 後進が来たらカウント
+            if (isBackward)
             {
                 _oppositeDirectionCountInForwardMode++;
-                LogDebug($"Forward-only mode: Forward direction detected. Count: {_oppositeDirectionCountInForwardMode}/{oppositeDirectionRequiredCount}");
+                LogDebug($"Forward-only mode: Backward direction detected. Count: {_oppositeDirectionCountInForwardMode}/{oppositeDirectionRequiredCount}");
             }
 
             // 必要回数に達したら前進のみモードを解除
@@ -562,6 +562,26 @@ public class OSCXPositionYVectorManager : MonoBehaviour
                 LogDebug("Forward-only mode deactivated. Counters reset.");
             }
         }
+        // 後進のみモード中の場合
+        else if (_isBackwardOnlyMode)
+        {
+            // 前進が来たらカウント
+            if (isForward)
+            {
+                _oppositeDirectionCountInForwardMode++;
+                LogDebug($"Backward-only mode: Forward direction detected. Count: {_oppositeDirectionCountInForwardMode}/{oppositeDirectionRequiredCount}");
+            }
+
+            // 必要回数に達したら後進のみモードを解除
+            if (_oppositeDirectionCountInForwardMode >= oppositeDirectionRequiredCount)
+            {
+                _isBackwardOnlyMode = false;
+                _consecutiveForwardCount = 0;
+                _consecutiveBackwardCount = 0;
+                _oppositeDirectionCountInForwardMode = 0;
+                LogDebug("Backward-only mode deactivated. Counters reset.");
+            }
+        }
         else
         {
             // 通常モード：連続カウントを更新
@@ -571,12 +591,12 @@ public class OSCXPositionYVectorManager : MonoBehaviour
                 _consecutiveBackwardCount = 0;
                 LogDebug($"Forward direction count: {_consecutiveForwardCount}");
 
-                // 閾値に達したら後進のみモードに移行
+                // 閾値に達したら前進のみモードに移行
                 if (_consecutiveForwardCount >= consecutiveForwardLimit)
                 {
-                    _isBackwardOnlyMode = true;
-                    _oppositeCountInBackwardMode = 0;
-                    LogDebug($"Backward-only mode activated due to consecutive Forward ({_consecutiveForwardCount} times)");
+                    _isForwardOnlyMode = true;
+                    _oppositeDirectionCountInForwardMode = 0;
+                    LogDebug($"Forward-only mode activated due to consecutive Forward ({_consecutiveForwardCount} times)");
                 }
             }
             else if (isBackward)
@@ -585,12 +605,12 @@ public class OSCXPositionYVectorManager : MonoBehaviour
                 _consecutiveForwardCount = 0;
                 LogDebug($"Backward direction count: {_consecutiveBackwardCount}");
 
-                // 閾値に達したら前進のみモードに移行
+                // 閾値に達したら後進のみモードに移行
                 if (_consecutiveBackwardCount >= consecutiveBackwardLimit)
                 {
-                    _isForwardOnlyMode = true;
+                    _isBackwardOnlyMode = true;
                     _oppositeDirectionCountInForwardMode = 0;
-                    LogDebug($"Forward-only mode activated due to consecutive Backward ({_consecutiveBackwardCount} times)");
+                    LogDebug($"Backward-only mode activated due to consecutive Backward ({_consecutiveBackwardCount} times)");
                 }
             }
         }
