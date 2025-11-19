@@ -616,15 +616,21 @@ MonoBehaviour:
   transmitPort: 7002
   transmitAddress: /direction
   xCenterPosition: 0
-  yVectorMagnitudeThreshold: 0.5
-  leftForwardValue: 0
-  rightForwardValue: 2
-  leftBackwardValue: 1
+  yVectorMagnitudeThreshold: 0.2
+  rightValue: 0
+  leftValue: 2
   rightBackwardValue: 3
+  leftBackwardValue: 1
   enableConditionalAxis: 1
-  conditionalAxisMin: 0.8
+  conditionalAxisMin: 0.88
   conditionalAxisMax: 1
-  yAngleThreshold: 45
+  cooldownTime: 0.2
+  enableConsecutiveSideDetection: 0
+  consecutiveSideLimit: 4
+  enableConsecutiveBackwardDetection: 1
+  consecutiveBackwardLimit: 2
+  forwardRequiredCount: 4
+  yAngleThreshold: 25
   enableDebugLog: 1
   showGizmo: 1
   onValueSent:
