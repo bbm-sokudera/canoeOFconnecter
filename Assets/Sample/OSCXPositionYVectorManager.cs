@@ -103,6 +103,9 @@ public class OSCXPositionYVectorManager : MonoBehaviour
     [Tooltip("同じ左右方向が何回続いたらその方向固定モードにするか")]
     public int consecutiveSideLimit = 5;
 
+    [Tooltip("左右ロックモードを解除するために必要な反対側の回数")]
+    public int oppositeSideRequiredCount = 2;
+
     [Header("Consecutive Backward Detection")]
     [Tooltip("後進連続検出を有効にする")]
     public bool enableConsecutiveBackwardDetection = false;
@@ -154,6 +157,8 @@ public class OSCXPositionYVectorManager : MonoBehaviour
     private int _consecutiveRightCount = 0;
     private bool _isLeftLocked = false;
     private bool _isRightLocked = false;
+    private int _oppositeCountInLeftLock = 0;  // 左ロック中に右が来た回数
+    private int _oppositeCountInRightLock = 0; // 右ロック中に左が来た回数
 
     // 後進連続検出用
     private int _consecutiveBackwardCount = 0;
@@ -452,25 +457,41 @@ public class OSCXPositionYVectorManager : MonoBehaviour
         // 左がロックされている場合
         if (_isLeftLocked)
         {
-            // 右が来たらロック解除
+            // 右が来たらカウント
             if (isRight)
             {
-                _isLeftLocked = false;
-                _consecutiveLeftCount = 0;
-                _consecutiveRightCount = 1; // 右カウントをリセットして1からスタート
-                LogDebug("Left lock released. Right direction detected.");
+                _oppositeCountInLeftLock++;
+                LogDebug($"Left-locked mode: Right detected. Count: {_oppositeCountInLeftLock}/{oppositeSideRequiredCount}");
+
+                // 必要回数に達したらロック解除
+                if (_oppositeCountInLeftLock >= oppositeSideRequiredCount)
+                {
+                    _isLeftLocked = false;
+                    _consecutiveLeftCount = 0;
+                    _oppositeCountInLeftLock = 0;
+                    _consecutiveRightCount = 0;
+                    LogDebug("Left lock released. Counters reset.");
+                }
             }
         }
         // 右がロックされている場合
         else if (_isRightLocked)
         {
-            // 左が来たらロック解除
+            // 左が来たらカウント
             if (isLeft)
             {
-                _isRightLocked = false;
-                _consecutiveRightCount = 0;
-                _consecutiveLeftCount = 1; // 左カウントをリセットして1からスタート
-                LogDebug("Right lock released. Left direction detected.");
+                _oppositeCountInRightLock++;
+                LogDebug($"Right-locked mode: Left detected. Count: {_oppositeCountInRightLock}/{oppositeSideRequiredCount}");
+
+                // 必要回数に達したらロック解除
+                if (_oppositeCountInRightLock >= oppositeSideRequiredCount)
+                {
+                    _isRightLocked = false;
+                    _consecutiveRightCount = 0;
+                    _oppositeCountInRightLock = 0;
+                    _consecutiveLeftCount = 0;
+                    LogDebug("Right lock released. Counters reset.");
+                }
             }
         }
         // どちらもロックされていない場合
@@ -486,6 +507,7 @@ public class OSCXPositionYVectorManager : MonoBehaviour
                 if (_consecutiveLeftCount >= consecutiveSideLimit)
                 {
                     _isLeftLocked = true;
+                    _oppositeCountInLeftLock = 0; // カウンターリセット
                     LogDebug($"Left locked due to consecutive detection ({_consecutiveLeftCount} times)");
                 }
             }
@@ -499,6 +521,7 @@ public class OSCXPositionYVectorManager : MonoBehaviour
                 if (_consecutiveRightCount >= consecutiveSideLimit)
                 {
                     _isRightLocked = true;
+                    _oppositeCountInRightLock = 0; // カウンターリセット
                     LogDebug($"Right locked due to consecutive detection ({_consecutiveRightCount} times)");
                 }
             }
@@ -696,6 +719,8 @@ public class OSCXPositionYVectorManager : MonoBehaviour
         _consecutiveRightCount = 0;
         _isLeftLocked = false;
         _isRightLocked = false;
+        _oppositeCountInLeftLock = 0;
+        _oppositeCountInRightLock = 0;
 
         // 後進連続検出のカウンターリセット
         _consecutiveBackwardCount = 0;
@@ -748,8 +773,16 @@ public class OSCXPositionYVectorManager : MonoBehaviour
 
         if (enableConsecutiveSideDetection)
         {
-            info += $"Consecutive Side Detection: Enabled (Limit={consecutiveSideLimit})\n";
+            info += $"Consecutive Side Detection: Enabled (Limit={consecutiveSideLimit}, OppositeRequired={oppositeSideRequiredCount})\n";
             info += $"  State: LeftLocked={_isLeftLocked}, RightLocked={_isRightLocked}, LeftCount={_consecutiveLeftCount}, RightCount={_consecutiveRightCount}\n";
+            if (_isLeftLocked)
+            {
+                info += $"  LeftLock OppositeCount: {_oppositeCountInLeftLock}\n";
+            }
+            if (_isRightLocked)
+            {
+                info += $"  RightLock OppositeCount: {_oppositeCountInRightLock}\n";
+            }
         }
         else
         {
