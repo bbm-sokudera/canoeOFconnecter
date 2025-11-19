@@ -82,6 +82,16 @@ public class OSCXPositionYVectorManager : MonoBehaviour
     [Tooltip("右＋後方向の時に送信する値")]
     public int rightBackwardValue = 3;
 
+    [Header("Conditional Axis Settings")]
+    [Tooltip("条件軸を有効にする（チェックONで、Z軸が範囲内の時のみ判定を実行）")]
+    public bool enableConditionalAxis = false;
+
+    [Tooltip("条件軸（Z軸）の最小値（この値以上の時に反応）")]
+    public float conditionalAxisMin = -1.0f;
+
+    [Tooltip("条件軸（Z軸）の最大値（この値以下の時に反応）")]
+    public float conditionalAxisMax = 1.0f;
+
     [Header("Advanced Settings")]
     [Tooltip("Y軸ベクトル方向の角度閾値（度）：Y軸からこの角度以内なら前後として判定")]
     public float yAngleThreshold = 45f;
@@ -221,6 +231,21 @@ public class OSCXPositionYVectorManager : MonoBehaviour
         );
 
         LogDebug($"Received position: {_currentPosition}");
+
+        // 条件軸（Z軸）のチェック（有効な場合）
+        if (enableConditionalAxis)
+        {
+            float zValue = _currentPosition.z;
+
+            // Z軸が範囲外の場合は処理をスキップ
+            if (zValue < conditionalAxisMin || zValue > conditionalAxisMax)
+            {
+                LogDebug($"Conditional axis (Z) value {zValue:F3} is out of range [{conditionalAxisMin:F3}, {conditionalAxisMax:F3}]. Skipping processing.");
+                return;
+            }
+
+            LogDebug($"Conditional axis (Z) value {zValue:F3} is within range [{conditionalAxisMin:F3}, {conditionalAxisMax:F3}]. Processing...");
+        }
 
         // 初回は前回位置を設定するだけ
         if (_isFirstPosition)
@@ -440,16 +465,47 @@ public class OSCXPositionYVectorManager : MonoBehaviour
     }
 
     /// <summary>
+    /// 条件軸（Z軸）の有効/無効を設定
+    /// </summary>
+    public void SetConditionalAxisEnabled(bool enabled)
+    {
+        enableConditionalAxis = enabled;
+        LogDebug($"Conditional axis (Z) {(enabled ? "enabled" : "disabled")}");
+    }
+
+    /// <summary>
+    /// 条件軸（Z軸）の範囲を設定
+    /// </summary>
+    public void SetConditionalAxisRange(float min, float max)
+    {
+        conditionalAxisMin = min;
+        conditionalAxisMax = max;
+        LogDebug($"Conditional axis (Z) range set to [{min:F3}, {max:F3}]");
+    }
+
+    /// <summary>
     /// 現在の設定情報を取得
     /// </summary>
     public string GetConfigInfo()
     {
-        return $"X Center Position: {xCenterPosition:F3}\n" +
-               $"Y Vector Threshold: {yVectorMagnitudeThreshold:F3}\n" +
-               $"Y Angle Threshold: {yAngleThreshold:F1}°\n" +
-               $"Direction Values: LF={leftForwardValue}, RF={rightForwardValue}, LB={leftBackwardValue}, RB={rightBackwardValue}\n" +
-               $"Receive: {receiveAddress}@{receivePort}\n" +
-               $"Transmit: {transmitAddress}@{transmitHost}:{transmitPort}";
+        string info = $"X Center Position: {xCenterPosition:F3}\n" +
+                      $"Y Vector Threshold: {yVectorMagnitudeThreshold:F3}\n" +
+                      $"Y Angle Threshold: {yAngleThreshold:F1}°\n" +
+                      $"Direction Values: LF={leftForwardValue}, RF={rightForwardValue}, LB={leftBackwardValue}, RB={rightBackwardValue}\n";
+
+        if (enableConditionalAxis)
+        {
+            info += $"Conditional Axis (Z): Enabled, Range [{conditionalAxisMin:F2}, {conditionalAxisMax:F2}]\n";
+        }
+        else
+        {
+            info += "Conditional Axis (Z): Disabled\n";
+        }
+
+        info += $"Receive: {receiveAddress}@{receivePort}\n" +
+                $"Transmit: {transmitAddress}@{transmitHost}:{transmitPort}";
+
+        return info;
     }
 
     /// <summary>
