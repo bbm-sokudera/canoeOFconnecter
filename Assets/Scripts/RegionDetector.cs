@@ -11,6 +11,9 @@ public class NormLowSequenceDetector : MonoBehaviour
 {
     // --- 参照 ---
     public OrbbecFrameSource frameSource;
+    [Tooltip("Orbbecデバイスへの参照（デバイス接続制御用）")]
+    public OrbbecUnity.OrbbecDevice orbbecDevice;
+
     [Header("OSC Output")]
     public OSCManager oscManager;
 
@@ -102,9 +105,28 @@ public class NormLowSequenceDetector : MonoBehaviour
             Debug.LogWarning("OSCManager is not assigned in RegionDetector!");
         }
 
-        // OSC入力を使用する場合、レシーバーを初期化
-        if (!useFrameSource)
+        // useFrameSourceの状態に応じてデバイス接続を制御
+        if (useFrameSource)
         {
+            // FrameSourceを使用する場合、デバイス接続を開始
+            if (orbbecDevice != null)
+            {
+                Debug.Log("[RegionDetector] useFrameSource=true: Starting Orbbec device connection...");
+                orbbecDevice.StartDeviceConnection();
+            }
+            else
+            {
+                Debug.LogWarning("[RegionDetector] orbbecDevice is not assigned. Cannot control device connection.");
+            }
+        }
+        else
+        {
+            // OSC入力を使用する場合、デバイス接続を停止してOSCレシーバーを初期化
+            if (orbbecDevice != null)
+            {
+                Debug.Log("[RegionDetector] useFrameSource=false: Stopping Orbbec device connection...");
+                orbbecDevice.StopDeviceConnection();
+            }
             InitializeOSCReceiver();
         }
     }
@@ -114,6 +136,12 @@ public class NormLowSequenceDetector : MonoBehaviour
         if (_oscReceiver != null)
         {
             _oscReceiver.Close();
+        }
+
+        // デバイス接続を停止（念のため）
+        if (orbbecDevice != null)
+        {
+            orbbecDevice.StopDeviceConnection();
         }
     }
 
