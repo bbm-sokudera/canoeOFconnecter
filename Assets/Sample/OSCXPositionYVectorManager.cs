@@ -96,6 +96,13 @@ public class OSCXPositionYVectorManager : MonoBehaviour
     [Tooltip("送信のクールダウン時間（秒）：この時間経過後のみ次の送信を許可")]
     public float cooldownTime = 0.3f;
 
+    [Header("Consecutive Side Detection")]
+    [Tooltip("左右連続検出を有効にする")]
+    public bool enableConsecutiveSideDetection = false;
+
+    [Tooltip("同じ左右方向が何回続いたらその方向固定モードにするか")]
+    public int consecutiveSideLimit = 5;
+
     [Header("Consecutive Backward Detection")]
     [Tooltip("後進連続検出を有効にする")]
     public bool enableConsecutiveBackwardDetection = false;
@@ -141,6 +148,12 @@ public class OSCXPositionYVectorManager : MonoBehaviour
 
     // クールダウン用
     private float _lastSendTime = -999f;
+
+    // 左右連続検出用
+    private int _consecutiveLeftCount = 0;
+    private int _consecutiveRightCount = 0;
+    private bool _isLeftLocked = false;
+    private bool _isRightLocked = false;
 
     // 後進連続検出用
     private int _consecutiveBackwardCount = 0;
@@ -400,13 +413,19 @@ public class OSCXPositionYVectorManager : MonoBehaviour
             return;
         }
 
-        // 2. 後進連続検出の処理
+        // 2. 左右連続検出の処理
+        if (enableConsecutiveSideDetection)
+        {
+            UpdateConsecutiveSideCount(direction);
+        }
+
+        // 3. 後進連続検出の処理
         if (enableConsecutiveBackwardDetection)
         {
             UpdateConsecutiveBackwardCount(direction);
         }
 
-        // 3. 送信する値を決定（後進のみモードを考慮）
+        // 4. 送信する値を決定（後進のみモード・左右ロックを考慮）
         int value = DetermineValueToSend(direction);
 
         if (value == -1)
@@ -415,11 +434,75 @@ public class OSCXPositionYVectorManager : MonoBehaviour
             return;
         }
 
-        // 4. 値を送信
+        // 5. 値を送信
         SendValue(value);
 
-        // 5. 最終送信時刻を更新
+        // 6. 最終送信時刻を更新
         _lastSendTime = Time.time;
+    }
+
+    /// <summary>
+    /// 左右連続カウントを更新
+    /// </summary>
+    private void UpdateConsecutiveSideCount(CombinedDirection direction)
+    {
+        bool isLeft = (direction == CombinedDirection.LeftForward || direction == CombinedDirection.LeftBackward);
+        bool isRight = (direction == CombinedDirection.RightForward || direction == CombinedDirection.RightBackward);
+
+        // 左がロックされている場合
+        if (_isLeftLocked)
+        {
+            // 右が来たらロック解除
+            if (isRight)
+            {
+                _isLeftLocked = false;
+                _consecutiveLeftCount = 0;
+                _consecutiveRightCount = 1; // 右カウントをリセットして1からスタート
+                LogDebug("Left lock released. Right direction detected.");
+            }
+        }
+        // 右がロックされている場合
+        else if (_isRightLocked)
+        {
+            // 左が来たらロック解除
+            if (isLeft)
+            {
+                _isRightLocked = false;
+                _consecutiveRightCount = 0;
+                _consecutiveLeftCount = 1; // 左カウントをリセットして1からスタート
+                LogDebug("Right lock released. Left direction detected.");
+            }
+        }
+        // どちらもロックされていない場合
+        else
+        {
+            if (isLeft)
+            {
+                _consecutiveLeftCount++;
+                _consecutiveRightCount = 0; // 右カウントをリセット
+                LogDebug($"Left direction count: {_consecutiveLeftCount}");
+
+                // 閾値に達したら左をロック
+                if (_consecutiveLeftCount >= consecutiveSideLimit)
+                {
+                    _isLeftLocked = true;
+                    LogDebug($"Left locked due to consecutive detection ({_consecutiveLeftCount} times)");
+                }
+            }
+            else if (isRight)
+            {
+                _consecutiveRightCount++;
+                _consecutiveLeftCount = 0; // 左カウントをリセット
+                LogDebug($"Right direction count: {_consecutiveRightCount}");
+
+                // 閾値に達したら右をロック
+                if (_consecutiveRightCount >= consecutiveSideLimit)
+                {
+                    _isRightLocked = true;
+                    LogDebug($"Right locked due to consecutive detection ({_consecutiveRightCount} times)");
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -474,7 +557,7 @@ public class OSCXPositionYVectorManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 送信する値を決定（後進のみモードを考慮）
+    /// 送信する値を決定（後進のみモード・左右ロックを考慮）
     /// </summary>
     private int DetermineValueToSend(CombinedDirection direction)
     {
@@ -483,6 +566,24 @@ public class OSCXPositionYVectorManager : MonoBehaviour
         // 基本は左右のみの判定
         bool isLeft = (direction == CombinedDirection.LeftForward || direction == CombinedDirection.LeftBackward);
         bool isRight = (direction == CombinedDirection.RightForward || direction == CombinedDirection.RightBackward);
+
+        // 左右ロック機能が有効な場合のロックチェック
+        if (enableConsecutiveSideDetection)
+        {
+            // 左がロックされている場合：右方向は無視
+            if (_isLeftLocked && isRight)
+            {
+                LogDebug("Left is locked. Ignoring right direction.");
+                return -1;
+            }
+
+            // 右がロックされている場合：左方向は無視
+            if (_isRightLocked && isLeft)
+            {
+                LogDebug("Right is locked. Ignoring left direction.");
+                return -1;
+            }
+        }
 
         if (_isBackwardOnlyMode)
         {
@@ -590,6 +691,12 @@ public class OSCXPositionYVectorManager : MonoBehaviour
         _isFirstPosition = true;
         _movementVector = Vector3.zero;
 
+        // 左右連続検出のカウンターリセット
+        _consecutiveLeftCount = 0;
+        _consecutiveRightCount = 0;
+        _isLeftLocked = false;
+        _isRightLocked = false;
+
         // 後進連続検出のカウンターリセット
         _consecutiveBackwardCount = 0;
         _isBackwardOnlyMode = false;
@@ -638,6 +745,16 @@ public class OSCXPositionYVectorManager : MonoBehaviour
         }
 
         info += $"Cooldown Time: {cooldownTime:F2}s\n";
+
+        if (enableConsecutiveSideDetection)
+        {
+            info += $"Consecutive Side Detection: Enabled (Limit={consecutiveSideLimit})\n";
+            info += $"  State: LeftLocked={_isLeftLocked}, RightLocked={_isRightLocked}, LeftCount={_consecutiveLeftCount}, RightCount={_consecutiveRightCount}\n";
+        }
+        else
+        {
+            info += "Consecutive Side Detection: Disabled\n";
+        }
 
         if (enableConsecutiveBackwardDetection)
         {
