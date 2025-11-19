@@ -92,6 +92,20 @@ public class OSCXPositionYVectorManager : MonoBehaviour
     [Tooltip("条件軸（Z軸）の最大値（この値以下の時に反応）")]
     public float conditionalAxisMax = 1.0f;
 
+    [Header("Cooldown Settings")]
+    [Tooltip("送信のクールダウン時間（秒）：この時間経過後のみ次の送信を許可")]
+    public float cooldownTime = 0.3f;
+
+    [Header("Consecutive Side Detection")]
+    [Tooltip("連続同方向検出を有効にする")]
+    public bool enableConsecutiveSideDetection = false;
+
+    [Tooltip("同じ左右方向が何回続いたら後方のみモードにするか")]
+    public int consecutiveSideLimit = 5;
+
+    [Tooltip("後方のみモードを解除するために必要な反対側の回数")]
+    public int oppositeRequiredCount = 2;
+
     [Header("Advanced Settings")]
     [Tooltip("Y軸ベクトル方向の角度閾値（度）：Y軸からこの角度以内なら前後として判定")]
     public float yAngleThreshold = 45f;
@@ -124,6 +138,15 @@ public class OSCXPositionYVectorManager : MonoBehaviour
 
     private XPosition _currentXPosition = XPosition.Right;
     private YVectorDirection _currentYDirection = YVectorDirection.None;
+
+    // クールダウン用
+    private float _lastSendTime = -999f;
+
+    // 連続同方向検出用
+    private int _consecutiveLeftCount = 0;
+    private int _consecutiveRightCount = 0;
+    private bool _isBackwardOnlyMode = false;
+    private int _oppositeCountInBackwardMode = 0;
 
     #endregion
 
@@ -371,15 +394,129 @@ public class OSCXPositionYVectorManager : MonoBehaviour
     /// </summary>
     private void SendDirectionValue(CombinedDirection direction)
     {
+        // 1. クールダウンチェック
+        if (Time.time - _lastSendTime < cooldownTime)
+        {
+            LogDebug($"Cooldown active. Skipping transmission. Time since last send: {Time.time - _lastSendTime:F3}s");
+            return;
+        }
+
+        // 2. 連続同方向検出の処理
+        if (enableConsecutiveSideDetection)
+        {
+            UpdateConsecutiveSideCount(direction);
+        }
+
+        // 3. 送信する値を決定（後方のみモードを考慮）
+        int value = DetermineValueToSend(direction);
+
+        if (value == -1)
+        {
+            LogDebug("No clear direction. Skipping transmission.");
+            return;
+        }
+
+        // 4. 値を送信
+        SendValue(value);
+
+        // 5. 最終送信時刻を更新
+        _lastSendTime = Time.time;
+    }
+
+    /// <summary>
+    /// 連続同方向カウントを更新
+    /// </summary>
+    private void UpdateConsecutiveSideCount(CombinedDirection direction)
+    {
+        XPosition currentSide = XPosition.Right;
+
+        // 方向から左右を判定
+        if (direction == CombinedDirection.LeftForward || direction == CombinedDirection.LeftBackward)
+        {
+            currentSide = XPosition.Left;
+        }
+        else if (direction == CombinedDirection.RightForward || direction == CombinedDirection.RightBackward)
+        {
+            currentSide = XPosition.Right;
+        }
+
+        // 後方のみモード中の場合
+        if (_isBackwardOnlyMode)
+        {
+            // 反対側が来たらカウント
+            if (currentSide == XPosition.Left && _consecutiveRightCount >= consecutiveSideLimit)
+            {
+                _oppositeCountInBackwardMode++;
+                LogDebug($"Backward-only mode: Opposite side (Left) detected. Count: {_oppositeCountInBackwardMode}/{oppositeRequiredCount}");
+            }
+            else if (currentSide == XPosition.Right && _consecutiveLeftCount >= consecutiveSideLimit)
+            {
+                _oppositeCountInBackwardMode++;
+                LogDebug($"Backward-only mode: Opposite side (Right) detected. Count: {_oppositeCountInBackwardMode}/{oppositeRequiredCount}");
+            }
+
+            // 必要回数に達したら後方のみモードを解除
+            if (_oppositeCountInBackwardMode >= oppositeRequiredCount)
+            {
+                _isBackwardOnlyMode = false;
+                _consecutiveLeftCount = 0;
+                _consecutiveRightCount = 0;
+                _oppositeCountInBackwardMode = 0;
+                LogDebug("Backward-only mode deactivated. Counters reset.");
+            }
+        }
+        else
+        {
+            // 通常モード：連続カウントを更新
+            if (currentSide == XPosition.Left)
+            {
+                _consecutiveLeftCount++;
+                _consecutiveRightCount = 0;
+                LogDebug($"Left side count: {_consecutiveLeftCount}");
+
+                // 閾値に達したら後方のみモードに移行
+                if (_consecutiveLeftCount >= consecutiveSideLimit)
+                {
+                    _isBackwardOnlyMode = true;
+                    _oppositeCountInBackwardMode = 0;
+                    LogDebug($"Backward-only mode activated due to consecutive Left ({_consecutiveLeftCount} times)");
+                }
+            }
+            else if (currentSide == XPosition.Right)
+            {
+                _consecutiveRightCount++;
+                _consecutiveLeftCount = 0;
+                LogDebug($"Right side count: {_consecutiveRightCount}");
+
+                // 閾値に達したら後方のみモードに移行
+                if (_consecutiveRightCount >= consecutiveSideLimit)
+                {
+                    _isBackwardOnlyMode = true;
+                    _oppositeCountInBackwardMode = 0;
+                    LogDebug($"Backward-only mode activated due to consecutive Right ({_consecutiveRightCount} times)");
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// 送信する値を決定（後方のみモードを考慮）
+    /// </summary>
+    private int DetermineValueToSend(CombinedDirection direction)
+    {
         int value;
 
         switch (direction)
         {
             case CombinedDirection.LeftForward:
-                value = leftForwardValue;
+                value = _isBackwardOnlyMode ? leftBackwardValue : leftForwardValue;
+                if (_isBackwardOnlyMode)
+                    LogDebug("Backward-only mode: LeftForward → LeftBackward");
                 break;
             case CombinedDirection.RightForward:
-                value = rightForwardValue;
+                value = _isBackwardOnlyMode ? rightBackwardValue : rightForwardValue;
+                if (_isBackwardOnlyMode)
+                    LogDebug("Backward-only mode: RightForward → RightBackward");
                 break;
             case CombinedDirection.LeftBackward:
                 value = leftBackwardValue;
@@ -388,11 +525,10 @@ public class OSCXPositionYVectorManager : MonoBehaviour
                 value = rightBackwardValue;
                 break;
             default:
-                LogDebug("No clear direction. Skipping transmission.");
-                return;
+                return -1;
         }
 
-        SendValue(value);
+        return value;
     }
 
     /// <summary>
@@ -462,7 +598,12 @@ public class OSCXPositionYVectorManager : MonoBehaviour
     {
         _isFirstPosition = true;
         _movementVector = Vector3.zero;
-        LogDebug("Position reset");
+        _consecutiveLeftCount = 0;
+        _consecutiveRightCount = 0;
+        _isBackwardOnlyMode = false;
+        _oppositeCountInBackwardMode = 0;
+        _lastSendTime = -999f;
+        LogDebug("Position and all counters reset");
     }
 
     /// <summary>
@@ -501,6 +642,18 @@ public class OSCXPositionYVectorManager : MonoBehaviour
         else
         {
             info += "Conditional Axis (Z): Disabled\n";
+        }
+
+        info += $"Cooldown Time: {cooldownTime:F2}s\n";
+
+        if (enableConsecutiveSideDetection)
+        {
+            info += $"Consecutive Side Detection: Enabled (Limit={consecutiveSideLimit}, OppositeRequired={oppositeRequiredCount})\n";
+            info += $"Current State: BackwardOnlyMode={_isBackwardOnlyMode}, LeftCount={_consecutiveLeftCount}, RightCount={_consecutiveRightCount}\n";
+        }
+        else
+        {
+            info += "Consecutive Side Detection: Disabled\n";
         }
 
         info += $"Receive: {receiveAddress}@{receivePort}\n" +
