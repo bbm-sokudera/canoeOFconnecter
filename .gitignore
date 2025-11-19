@@ -1,0 +1,17 @@
+/Temp
+/Library
+/obj
+/Logs
+/Packages
+*.sln
+*.csproj
+*_Data/
+*.exe
+*.zip
+*.apk
+*.unitypackage
+*.bak
+*.bak.meta
+.vscode/
+Log/
+Build/
