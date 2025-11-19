@@ -336,7 +336,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1241628001}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7b0bc4a9127d824418e8ebadc55086b7, type: 3}
   m_Name: 
@@ -349,7 +349,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1241628001}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ec4df68c89a0fb041812a49f22718488, type: 3}
   m_Name: 
@@ -369,7 +369,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1241628001}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 93fdffdbfaf3c644b8dab28c99557bcc, type: 3}
   m_Name: 
@@ -378,6 +378,7 @@ MonoBehaviour:
   onDeviceFound:
     m_PersistentCalls:
       m_Calls: []
+  autoConnectOnStart: 1
 --- !u!114 &1241628005
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -397,7 +398,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1241628001}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7c346b94f75e28840860d7c4a5cb3309, type: 3}
   m_Name: 
@@ -515,6 +516,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   frameSource: {fileID: 1241628002}
+  orbbecDevice: {fileID: 0}
   oscManager: {fileID: 0}
   useFrameSource: 0
   oscReceivePort: 7003
@@ -609,16 +611,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   receivePort: 7001
-  receiveAddress: /position
+  receiveAddress: /box
   transmitHost: 192.168.1.20
   transmitPort: 7002
   transmitAddress: /direction
   xCenterPosition: 0
-  yVectorMagnitudeThreshold: 0.1
+  yVectorMagnitudeThreshold: 0.5
   leftForwardValue: 0
   rightForwardValue: 2
   leftBackwardValue: 1
   rightBackwardValue: 3
+  enableConditionalAxis: 1
+  conditionalAxisMin: 0.8
+  conditionalAxisMax: 1
   yAngleThreshold: 45
   enableDebugLog: 1
   showGizmo: 1

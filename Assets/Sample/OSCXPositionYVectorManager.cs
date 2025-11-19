@@ -425,7 +425,9 @@ public class OSCXPositionYVectorManager : MonoBehaviour
     /// </summary>
     private void LogDebug(string message)
     {
-        if (enableDebugLog)
+        float zValue = _currentPosition.z;
+
+        if (enableDebugLog && zValue > conditionalAxisMin)
         {
             Debug.Log($"[OSCXPositionYVectorManager] {message}");
         }
