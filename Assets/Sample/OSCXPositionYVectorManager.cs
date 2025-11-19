@@ -237,10 +237,9 @@ public class OSCXPositionYVectorManager : MonoBehaviour
         {
             float zValue = _currentPosition.z;
 
-            // Z軸が範囲外の場合は処理をスキップ
+            // Z軸が範囲外の場合は処理をスキップ（ログは出力しない）
             if (zValue < conditionalAxisMin || zValue > conditionalAxisMax)
             {
-                LogDebug($"Conditional axis (Z) value {zValue:F3} is out of range [{conditionalAxisMin:F3}, {conditionalAxisMax:F3}]. Skipping processing.");
                 return;
             }
 
