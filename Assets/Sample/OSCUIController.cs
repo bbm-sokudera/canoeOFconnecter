@@ -20,6 +20,12 @@ public class OSCUIController : MonoBehaviour
     [Tooltip("設定インターフェース")]
     public OSCXPositionYVectorConfig config;
 
+    [Tooltip("Z軸ビジュアライザー（オプション）")]
+    public OSCZAxisVisualizer zAxisVisualizer;
+
+    [Tooltip("Z軸コントローラー（オプション）")]
+    public OSCZAxisController zAxisController;
+
     [Header("UI Panel References")]
     [Tooltip("ビジュアライザーパネル")]
     public GameObject visualizerPanel;
