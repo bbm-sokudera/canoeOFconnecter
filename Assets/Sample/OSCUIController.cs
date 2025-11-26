@@ -213,7 +213,7 @@ public class OSCUIController : MonoBehaviour
     }
 
     /// <summary>
-    /// テスト用：指定された方向を送信（ビジュアライズのみ）
+    /// テスト用：指定された方向を実際にOSC送信
     /// </summary>
     void TestSendValue(string direction)
     {
@@ -251,11 +251,8 @@ public class OSCUIController : MonoBehaviour
             return;
         }
 
-        // ビジュアライズ
-        if (visualizer != null)
-        {
-            visualizer.TestVisualize(value);
-        }
+        // 実際にOSC送信（これでイベントも発火されるのでビジュアライザーも自動的に反応する）
+        oscManager.SendTestValue(value);
 
         // ログ出力
         if (debugConsole != null)

@@ -829,5 +829,27 @@ public class OSCXPositionYVectorManager : MonoBehaviour
         return _currentYDirection;
     }
 
+    /// <summary>
+    /// テスト用：指定された値を手動でOSC送信
+    /// クールダウンやモードチェックを無視して直接送信します
+    /// </summary>
+    public void SendTestValue(int value)
+    {
+        if (_transmitter == null)
+        {
+            Debug.LogWarning("[OSCXPositionYVectorManager] Transmitter is not initialized. Cannot send test value.");
+            return;
+        }
+
+        var message = new OSCMessage(transmitAddress);
+        message.AddValue(OSCValue.Int(value));
+        _transmitter.Send(message);
+
+        Debug.Log($"[OSCXPositionYVectorManager] [TEST SEND] {transmitAddress} -> {value}");
+
+        // イベントを発火（ビジュアライザーが反応する）
+        onValueSent?.Invoke(value);
+    }
+
     #endregion
 }
