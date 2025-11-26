@@ -63,8 +63,19 @@ public class OSCUIController : MonoBehaviour
     [Tooltip("テスト用：左後進を送信")]
     public Button testLeftBackwardButton;
 
+    [Header("Alternate Test Buttons (Optional)")]
+    [Tooltip("テスト用：右左を交互に送信（前進）")]
+    public Button testForwardAlternateButton;
+
+    [Tooltip("テスト用：右後ろ左後ろを交互に送信（後進）")]
+    public Button testBackwardAlternateButton;
+
     private bool _visualizerVisible = true;
     private bool _consoleVisible = true;
+
+    // 交互送信用の状態
+    private bool _forwardAlternateIsRight = true;  // true=右, false=左
+    private bool _backwardAlternateIsRight = true; // true=右後ろ, false=左後ろ
 
     void Start()
     {
@@ -113,6 +124,13 @@ public class OSCUIController : MonoBehaviour
 
         if (testLeftBackwardButton != null)
             testLeftBackwardButton.onClick.AddListener(() => TestSendValue("leftBackward"));
+
+        // 交互送信ボタン
+        if (testForwardAlternateButton != null)
+            testForwardAlternateButton.onClick.AddListener(OnForwardAlternateClicked);
+
+        if (testBackwardAlternateButton != null)
+            testBackwardAlternateButton.onClick.AddListener(OnBackwardAlternateClicked);
     }
 
     /// <summary>
@@ -259,6 +277,84 @@ public class OSCUIController : MonoBehaviour
         {
             debugConsole.LogOSCSend($"Test {direction}: value={value}");
         }
+    }
+
+    /// <summary>
+    /// 前進（右左交互）ボタンがクリックされた時
+    /// </summary>
+    void OnForwardAlternateClicked()
+    {
+        if (oscManager == null)
+        {
+            Debug.LogWarning("[OSCUIController] OSC Manager is not assigned!");
+            return;
+        }
+
+        // 現在の状態に応じて値を決定
+        int value;
+        string direction;
+
+        if (_forwardAlternateIsRight)
+        {
+            value = oscManager.rightValue;
+            direction = "Right";
+        }
+        else
+        {
+            value = oscManager.leftValue;
+            direction = "Left";
+        }
+
+        // OSC送信
+        oscManager.SendTestValue(value);
+
+        // ログ出力
+        if (debugConsole != null)
+        {
+            debugConsole.LogOSCSend($"Forward Alternate: {direction} (value={value})");
+        }
+
+        // 状態を反転
+        _forwardAlternateIsRight = !_forwardAlternateIsRight;
+    }
+
+    /// <summary>
+    /// 後進（右後ろ左後ろ交互）ボタンがクリックされた時
+    /// </summary>
+    void OnBackwardAlternateClicked()
+    {
+        if (oscManager == null)
+        {
+            Debug.LogWarning("[OSCUIController] OSC Manager is not assigned!");
+            return;
+        }
+
+        // 現在の状態に応じて値を決定
+        int value;
+        string direction;
+
+        if (_backwardAlternateIsRight)
+        {
+            value = oscManager.rightBackwardValue;
+            direction = "Right+Backward";
+        }
+        else
+        {
+            value = oscManager.leftBackwardValue;
+            direction = "Left+Backward";
+        }
+
+        // OSC送信
+        oscManager.SendTestValue(value);
+
+        // ログ出力
+        if (debugConsole != null)
+        {
+            debugConsole.LogOSCSend($"Backward Alternate: {direction} (value={value})");
+        }
+
+        // 状態を反転
+        _backwardAlternateIsRight = !_backwardAlternateIsRight;
     }
 
     /// <summary>
