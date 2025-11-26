@@ -209,14 +209,20 @@ public class OSCDebugConsole : MonoBehaviour
     /// </summary>
     private string GetDirectionName(int value)
     {
-        switch (value)
-        {
-            case 0: return "Right";
-            case 1: return "Right+Backward";
-            case 2: return "Left";
-            case 3: return "Left+Backward";
-            default: return "Unknown";
-        }
+        if (oscManager == null)
+            return $"Value:{value}";
+
+        // 設定値と比較して方向名を返す
+        if (value == oscManager.rightValue)
+            return "Right";
+        else if (value == oscManager.rightBackwardValue)
+            return "Right+Backward";
+        else if (value == oscManager.leftValue)
+            return "Left";
+        else if (value == oscManager.leftBackwardValue)
+            return "Left+Backward";
+        else
+            return $"Unknown({value})";
     }
 
     /// <summary>

@@ -101,18 +101,18 @@ public class OSCUIController : MonoBehaviour
         if (toggleConsoleButton != null)
             toggleConsoleButton.onClick.AddListener(OnToggleConsole);
 
-        // テストボタン
+        // テストボタン（設定値を使用）
         if (testRightButton != null)
-            testRightButton.onClick.AddListener(() => TestSendValue(0));
+            testRightButton.onClick.AddListener(() => TestSendValue("right"));
 
         if (testLeftButton != null)
-            testLeftButton.onClick.AddListener(() => TestSendValue(2));
+            testLeftButton.onClick.AddListener(() => TestSendValue("left"));
 
         if (testRightBackwardButton != null)
-            testRightBackwardButton.onClick.AddListener(() => TestSendValue(1));
+            testRightBackwardButton.onClick.AddListener(() => TestSendValue("rightBackward"));
 
         if (testLeftBackwardButton != null)
-            testLeftBackwardButton.onClick.AddListener(() => TestSendValue(3));
+            testLeftBackwardButton.onClick.AddListener(() => TestSendValue("leftBackward"));
     }
 
     /// <summary>
@@ -213,18 +213,54 @@ public class OSCUIController : MonoBehaviour
     }
 
     /// <summary>
-    /// テスト用：指定された値を送信（ビジュアライズのみ）
+    /// テスト用：指定された方向を送信（ビジュアライズのみ）
     /// </summary>
-    void TestSendValue(int value)
+    void TestSendValue(string direction)
     {
+        if (oscManager == null)
+        {
+            Debug.LogWarning("[OSCUIController] OSC Manager is not assigned!");
+            return;
+        }
+
+        int value = -1;
+
+        // 方向に応じて設定値を取得
+        switch (direction.ToLower())
+        {
+            case "right":
+                value = oscManager.rightValue;
+                break;
+
+            case "left":
+                value = oscManager.leftValue;
+                break;
+
+            case "rightbackward":
+                value = oscManager.rightBackwardValue;
+                break;
+
+            case "leftbackward":
+                value = oscManager.leftBackwardValue;
+                break;
+        }
+
+        if (value == -1)
+        {
+            Debug.LogWarning($"[OSCUIController] Unknown direction: {direction}");
+            return;
+        }
+
+        // ビジュアライズ
         if (visualizer != null)
         {
             visualizer.TestVisualize(value);
         }
 
+        // ログ出力
         if (debugConsole != null)
         {
-            debugConsole.LogOSCSend($"Test value: {value}");
+            debugConsole.LogOSCSend($"Test {direction}: value={value}");
         }
     }
 

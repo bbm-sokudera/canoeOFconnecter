@@ -127,27 +127,33 @@ public class OSCValueVisualizer : MonoBehaviour
     /// </summary>
     private void SetActiveColor(int value)
     {
-        switch (value)
+        if (targetManager == null)
+            return;
+
+        // 設定値と比較して対応するImageを光らせる
+        if (value == targetManager.rightValue)
         {
-            case 0: // 右（通常）
-                if (rightImage != null)
-                    rightImage.color = rightActiveColor;
-                break;
-
-            case 1: // 右（後進のみ）
-                if (rightBackwardImage != null)
-                    rightBackwardImage.color = rightBackwardActiveColor;
-                break;
-
-            case 2: // 左（通常）
-                if (leftImage != null)
-                    leftImage.color = leftActiveColor;
-                break;
-
-            case 3: // 左（後進のみ）
-                if (leftBackwardImage != null)
-                    leftBackwardImage.color = leftBackwardActiveColor;
-                break;
+            // 右（通常）
+            if (rightImage != null)
+                rightImage.color = rightActiveColor;
+        }
+        else if (value == targetManager.rightBackwardValue)
+        {
+            // 右（後進のみ）
+            if (rightBackwardImage != null)
+                rightBackwardImage.color = rightBackwardActiveColor;
+        }
+        else if (value == targetManager.leftValue)
+        {
+            // 左（通常）
+            if (leftImage != null)
+                leftImage.color = leftActiveColor;
+        }
+        else if (value == targetManager.leftBackwardValue)
+        {
+            // 左（後進のみ）
+            if (leftBackwardImage != null)
+                leftBackwardImage.color = leftBackwardActiveColor;
         }
     }
 
@@ -156,34 +162,35 @@ public class OSCValueVisualizer : MonoBehaviour
     /// </summary>
     private void UpdateColorWithFade(int value, float alpha)
     {
-        Color targetColor = inactiveColor;
+        if (targetManager == null)
+            return;
+
         Color activeColor = Color.white;
 
-        switch (value)
+        // 設定値と比較して対応するImageをフェード
+        if (value == targetManager.rightValue)
         {
-            case 0:
-                activeColor = rightActiveColor;
-                if (rightImage != null)
-                    rightImage.color = Color.Lerp(inactiveColor, activeColor, alpha);
-                break;
-
-            case 1:
-                activeColor = rightBackwardActiveColor;
-                if (rightBackwardImage != null)
-                    rightBackwardImage.color = Color.Lerp(inactiveColor, activeColor, alpha);
-                break;
-
-            case 2:
-                activeColor = leftActiveColor;
-                if (leftImage != null)
-                    leftImage.color = Color.Lerp(inactiveColor, activeColor, alpha);
-                break;
-
-            case 3:
-                activeColor = leftBackwardActiveColor;
-                if (leftBackwardImage != null)
-                    leftBackwardImage.color = Color.Lerp(inactiveColor, activeColor, alpha);
-                break;
+            activeColor = rightActiveColor;
+            if (rightImage != null)
+                rightImage.color = Color.Lerp(inactiveColor, activeColor, alpha);
+        }
+        else if (value == targetManager.rightBackwardValue)
+        {
+            activeColor = rightBackwardActiveColor;
+            if (rightBackwardImage != null)
+                rightBackwardImage.color = Color.Lerp(inactiveColor, activeColor, alpha);
+        }
+        else if (value == targetManager.leftValue)
+        {
+            activeColor = leftActiveColor;
+            if (leftImage != null)
+                leftImage.color = Color.Lerp(inactiveColor, activeColor, alpha);
+        }
+        else if (value == targetManager.leftBackwardValue)
+        {
+            activeColor = leftBackwardActiveColor;
+            if (leftBackwardImage != null)
+                leftBackwardImage.color = Color.Lerp(inactiveColor, activeColor, alpha);
         }
     }
 
