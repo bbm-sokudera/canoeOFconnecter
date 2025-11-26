@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 
 /// <summary>
 /// Z軸設定を補助するコントローラー
@@ -106,6 +107,8 @@ public class OSCZAxisController : MonoBehaviour
         if (minInputField != null)
         {
             minInputField.text = currentZ.ToString("F3");
+            // フォーカスをクリアしてUI更新を妨げないようにする
+            EventSystem.current.SetSelectedGameObject(null);
         }
 
         Debug.Log($"[OSCZAxisController] Conditional Axis Min set to: {currentZ:F3}");
@@ -132,6 +135,8 @@ public class OSCZAxisController : MonoBehaviour
         if (maxInputField != null)
         {
             maxInputField.text = currentZ.ToString("F3");
+            // フォーカスをクリアしてUI更新を妨げないようにする
+            EventSystem.current.SetSelectedGameObject(null);
         }
 
         Debug.Log($"[OSCZAxisController] Conditional Axis Max set to: {currentZ:F3}");
