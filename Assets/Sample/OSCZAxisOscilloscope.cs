@@ -45,11 +45,11 @@ public class OSCZAxisOscilloscope : MonoBehaviour
     public int graphHeight = 256;
 
     [Header("Y-Axis Scale")]
-    [Tooltip("Y軸の最小値（固定スケール）")]
-    public float yMin = -1f;
+    [Tooltip("Y軸の最小値（カメラからの距離、単位：m）")]
+    public float yMin = 0f;
 
-    [Tooltip("Y軸の最大値（固定スケール）")]
-    public float yMax = 1f;
+    [Tooltip("Y軸の最大値（カメラからの距離、単位：m）")]
+    public float yMax = 2.0f;
 
     [Header("Appearance")]
     [Tooltip("背景色")]
