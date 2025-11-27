@@ -72,9 +72,9 @@ public class OSCZAxisVisualizer : MonoBehaviour
         {
             _updateTimer = 0f;
 
-            // 現在のZ値を取得
-            Vector3 movement = targetManager.GetMovementVector();
-            float currentZ = movement.z;
+            // 現在のZ値を取得（OSC受信位置から）
+            Vector3 position = targetManager.GetCurrentPosition();
+            float currentZ = position.z;
 
             // 履歴に追加
             _zHistory.Enqueue(currentZ);
@@ -140,8 +140,8 @@ public class OSCZAxisVisualizer : MonoBehaviour
         if (targetManager == null)
             return 0f;
 
-        Vector3 movement = targetManager.GetMovementVector();
-        return movement.z;
+        Vector3 position = targetManager.GetCurrentPosition();
+        return position.z;
     }
 
     /// <summary>

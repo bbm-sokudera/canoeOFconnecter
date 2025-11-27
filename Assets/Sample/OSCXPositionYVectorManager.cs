@@ -814,6 +814,14 @@ public class OSCXPositionYVectorManager : MonoBehaviour
     }
 
     /// <summary>
+    /// 現在のOSC受信位置を取得
+    /// </summary>
+    public Vector3 GetCurrentPosition()
+    {
+        return _currentPosition;
+    }
+
+    /// <summary>
     /// 現在のX位置を取得
     /// </summary>
     public XPosition GetCurrentXPosition()

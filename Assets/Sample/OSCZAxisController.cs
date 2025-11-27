@@ -67,8 +67,8 @@ public class OSCZAxisController : MonoBehaviour
         if (currentZValueText == null || targetManager == null)
             return;
 
-        Vector3 movement = targetManager.GetMovementVector();
-        currentZValueText.text = $"Current Z: {movement.z:F3}";
+        Vector3 position = targetManager.GetCurrentPosition();
+        currentZValueText.text = $"Current Z: {position.z:F3}";
     }
 
     /// <summary>
@@ -186,8 +186,8 @@ public class OSCZAxisController : MonoBehaviour
         // 直接マネージャーから取得
         if (targetManager != null)
         {
-            Vector3 movement = targetManager.GetMovementVector();
-            return movement.z;
+            Vector3 position = targetManager.GetCurrentPosition();
+            return position.z;
         }
 
         return 0f;
