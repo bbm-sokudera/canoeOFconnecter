@@ -22,6 +22,12 @@ public class OSCZAxisOscilloscope : MonoBehaviour
     [Tooltip("表示/非表示を切り替えるToggle")]
     public Toggle visibilityToggle;
 
+    [Tooltip("最小値のInputField（OSCZAxisControllerのものを使用）")]
+    public InputField minInputField;
+
+    [Tooltip("最大値のInputField（OSCZAxisControllerのものを使用）")]
+    public InputField maxInputField;
+
     [Header("Graph Settings")]
     [Tooltip("グラフに表示する最大データポイント数")]
     [Range(10, 500)]
@@ -69,6 +75,17 @@ public class OSCZAxisOscilloscope : MonoBehaviour
     [Tooltip("縦グリッド線の数")]
     [Range(0, 20)]
     public int verticalGridLines = 10;
+
+    [Header("Range Overlay")]
+    [Tooltip("Min-Max範囲を示す矩形の塗りつぶし色")]
+    public Color rangeOverlayColor = new Color(0f, 1f, 1f, 0.3f); // 水色、アルファ0.3
+
+    [Tooltip("Min-Max範囲の枠線の色")]
+    public Color rangeBorderColor = new Color(0f, 1f, 1f, 0.8f); // 水色、アルファ0.8
+
+    [Tooltip("範囲枠線の太さ（ピクセル）")]
+    [Range(1, 5)]
+    public int rangeBorderThickness = 2;
 
     [Header("Debug")]
     [Tooltip("デバッグログを出力する")]
@@ -230,6 +247,9 @@ public class OSCZAxisOscilloscope : MonoBehaviour
             DrawGrid();
         }
 
+        // Min-Max範囲オーバーレイ描画
+        DrawRangeOverlay();
+
         // 波形描画
         DrawWaveform();
 
@@ -267,6 +287,98 @@ public class OSCZAxisOscilloscope : MonoBehaviour
         {
             int x = Mathf.RoundToInt((float)i / verticalGridLines * (graphWidth - 1));
             DrawVerticalLine(x, gridColor);
+        }
+    }
+
+    /// <summary>
+    /// Min-Max範囲のオーバーレイを描画
+    /// </summary>
+    void DrawRangeOverlay()
+    {
+        // InputFieldから値を取得
+        float rangeMin = GetRangeMinValue();
+        float rangeMax = GetRangeMaxValue();
+
+        // 無効な範囲の場合はスキップ
+        if (rangeMin >= rangeMax)
+            return;
+
+        // Y座標を計算（値を正規化）
+        float normalizedMin = Mathf.InverseLerp(yMin, yMax, rangeMin);
+        float normalizedMax = Mathf.InverseLerp(yMin, yMax, rangeMax);
+        int yBottom = Mathf.RoundToInt(normalizedMin * (graphHeight - 1));
+        int yTop = Mathf.RoundToInt(normalizedMax * (graphHeight - 1));
+
+        // 範囲が画面外の場合はクランプ
+        yBottom = Mathf.Clamp(yBottom, 0, graphHeight - 1);
+        yTop = Mathf.Clamp(yTop, 0, graphHeight - 1);
+
+        // 矩形の塗りつぶし
+        DrawFilledRectangle(0, yBottom, graphWidth - 1, yTop, rangeOverlayColor);
+
+        // 矩形の枠線（上辺と下辺）
+        for (int i = 0; i < rangeBorderThickness; i++)
+        {
+            // 下辺（Min値のライン）
+            if (yBottom + i < graphHeight)
+                DrawHorizontalLine(yBottom + i, rangeBorderColor);
+
+            // 上辺（Max値のライン）
+            if (yTop - i >= 0)
+                DrawHorizontalLine(yTop - i, rangeBorderColor);
+        }
+
+        LogDebug($"Range overlay drawn: Min={rangeMin:F3}, Max={rangeMax:F3}, yBottom={yBottom}, yTop={yTop}");
+    }
+
+    /// <summary>
+    /// InputFieldから最小値を取得
+    /// </summary>
+    float GetRangeMinValue()
+    {
+        if (minInputField != null && !string.IsNullOrEmpty(minInputField.text))
+        {
+            if (float.TryParse(minInputField.text, out float value))
+            {
+                return value;
+            }
+        }
+        return yMin; // デフォルト値
+    }
+
+    /// <summary>
+    /// InputFieldから最大値を取得
+    /// </summary>
+    float GetRangeMaxValue()
+    {
+        if (maxInputField != null && !string.IsNullOrEmpty(maxInputField.text))
+        {
+            if (float.TryParse(maxInputField.text, out float value))
+            {
+                return value;
+            }
+        }
+        return yMax; // デフォルト値
+    }
+
+    /// <summary>
+    /// 塗りつぶし矩形を描画
+    /// </summary>
+    void DrawFilledRectangle(int x1, int y1, int x2, int y2, Color color)
+    {
+        // 座標を正規化（左下が(x1,y1)、右上が(x2,y2)）
+        int xMin = Mathf.Min(x1, x2);
+        int xMax = Mathf.Max(x1, x2);
+        int yMinRect = Mathf.Min(y1, y2);
+        int yMaxRect = Mathf.Max(y1, y2);
+
+        // 塗りつぶし
+        for (int y = yMinRect; y <= yMaxRect; y++)
+        {
+            for (int x = xMin; x <= xMax; x++)
+            {
+                SetPixelSafe(x, y, color);
+            }
         }
     }
 

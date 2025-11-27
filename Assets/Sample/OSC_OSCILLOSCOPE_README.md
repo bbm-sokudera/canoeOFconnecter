@@ -6,6 +6,7 @@ UI.Imageとテクスチャを使って波形を描画し、表示/非表示切�
 
 ## 特徴
 - ✅ **リアルタイム波形表示**: Z軸の値を左から右へスクロールするグラフで表示
+- ✅ **Min-Max範囲オーバーレイ**: 設定した範囲を半透明の矩形で視覚的に表示
 - ✅ **パフォーマンス最適化**: 非表示時はデータ収集・描画処理を完全停止
 - ✅ **高度なカスタマイズ**: インスペクターから見た目や動作を細かく調整可能
 - ✅ **グリッド表示**: オシロスコープらしいグリッド線表示
@@ -35,6 +36,8 @@ UI.Imageとテクスチャを使って波形を描画し、表示/非表示切�
 #### UI References
 - **Graph Image**: 上記で作成したImageをアサイン
 - **Visibility Toggle**: 上記で作成したToggleをアサイン
+- **Min Input Field**: `OSCZAxisController`の最小値InputFieldをアサイン（範囲オーバーレイ用）
+- **Max Input Field**: `OSCZAxisController`の最大値InputFieldをアサイン（範囲オーバーレイ用）
 
 #### Graph Settings
 - **Max Data Points**: グラフに表示する最大データポイント数（デフォルト: 100）
@@ -62,6 +65,14 @@ UI.Imageとテクスチャを使って波形を描画し、表示/非表示切�
 - **Grid Color**: グリッド線の色（デフォルト: グレー）
 - **Horizontal Grid Lines**: 横グリッド線の数（デフォルト: 4）
 - **Vertical Grid Lines**: 縦グリッド線の数（デフォルト: 10）
+
+#### Range Overlay（範囲オーバーレイ）
+- **Range Overlay Color**: Min-Max範囲の塗りつぶし色（デフォルト: 水色、アルファ0.3）
+- **Range Border Color**: Min-Max範囲の枠線の色（デフォルト: 水色、アルファ0.8）
+- **Range Border Thickness**: 範囲枠線の太さ（ピクセル）（デフォルト: 2）
+  - 範囲: 1〜5
+  - InputFieldで設定されたMin-Max値が、グラフ上に半透明の矩形として表示されます
+  - InputFieldの値を変更すると、リアルタイムで矩形の位置が更新されます
 
 #### Debug
 - **Enable Debug Log**: デバッグログを出力するか（デフォルト: false）
