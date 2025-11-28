@@ -311,9 +311,9 @@ public class OSCZAxisOscilloscope : MonoBehaviour
         int yMinPixel = Mathf.RoundToInt((1.0f - normalizedMin) * (graphHeight - 1));
         int yMaxPixel = Mathf.RoundToInt((1.0f - normalizedMax) * (graphHeight - 1));
 
-        // Max値の方が大きいピクセル値（グラフの上側）
-        int yTop = Mathf.Max(yMinPixel, yMaxPixel);    // 画面上の上端（大きいピクセル値）
-        int yBottom = Mathf.Min(yMinPixel, yMaxPixel); // 画面上の下端（小さいピクセル値）
+        // 座標反転後：rangeMax（大きいZ値）が画面上端（小さいy値）、rangeMin（小さいZ値）が画面下端（大きいy値）
+        int yTop = Mathf.Min(yMinPixel, yMaxPixel);    // 画面上の上端（小さいピクセル値）
+        int yBottom = Mathf.Max(yMinPixel, yMaxPixel); // 画面上の下端（大きいピクセル値）
 
         // 範囲が画面外の場合はクランプ
         yTop = Mathf.Clamp(yTop, 0, graphHeight - 1);
