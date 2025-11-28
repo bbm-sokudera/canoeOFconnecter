@@ -303,29 +303,35 @@ public class OSCZAxisOscilloscope : MonoBehaviour
         if (rangeMin >= rangeMax)
             return;
 
-        // Y座標を計算（値を正規化）
+        // Y座標を計算（値を正規化して反転）
+        // Z値が大きい（天井）ほど下に、小さい（床）ほど上に表示
         float normalizedMin = Mathf.InverseLerp(yMin, yMax, rangeMin);
         float normalizedMax = Mathf.InverseLerp(yMin, yMax, rangeMax);
-        int yBottom = Mathf.RoundToInt(normalizedMin * (graphHeight - 1));
-        int yTop = Mathf.RoundToInt(normalizedMax * (graphHeight - 1));
+        int yMinPixel = Mathf.RoundToInt((1.0f - normalizedMin) * (graphHeight - 1));
+        int yMaxPixel = Mathf.RoundToInt((1.0f - normalizedMax) * (graphHeight - 1));
+
+        // 反転により、yMaxPixel < yMinPixelになる（Max値の方が上に表示される）
+        // 実際のピクセル座標の上下を確定
+        int yTop = Mathf.Min(yMinPixel, yMaxPixel);    // 画面上の上端（小さいピクセル値）
+        int yBottom = Mathf.Max(yMinPixel, yMaxPixel); // 画面上の下端（大きいピクセル値）
 
         // 範囲が画面外の場合はクランプ
-        yBottom = Mathf.Clamp(yBottom, 0, graphHeight - 1);
         yTop = Mathf.Clamp(yTop, 0, graphHeight - 1);
+        yBottom = Mathf.Clamp(yBottom, 0, graphHeight - 1);
 
         // 矩形の塗りつぶし
-        DrawFilledRectangle(0, yBottom, graphWidth - 1, yTop, rangeOverlayColor);
+        DrawFilledRectangle(0, yTop, graphWidth - 1, yBottom, rangeOverlayColor);
 
         // 矩形の枠線（上辺と下辺）
         for (int i = 0; i < rangeBorderThickness; i++)
         {
-            // 下辺（Min値のライン）
-            if (yBottom + i < graphHeight)
-                DrawHorizontalLine(yBottom + i, rangeBorderColor);
+            // 上辺（Max値のライン、画面上の上側）
+            if (yTop + i < graphHeight)
+                DrawHorizontalLine(yTop + i, rangeBorderColor);
 
-            // 上辺（Max値のライン）
-            if (yTop - i >= 0)
-                DrawHorizontalLine(yTop - i, rangeBorderColor);
+            // 下辺（Min値のライン、画面上の下側）
+            if (yBottom - i >= 0)
+                DrawHorizontalLine(yBottom - i, rangeBorderColor);
         }
 
         LogDebug($"Range overlay drawn: Min={rangeMin:F3}, Max={rangeMax:F3}, yBottom={yBottom}, yTop={yTop}");
@@ -399,11 +405,12 @@ public class OSCZAxisOscilloscope : MonoBehaviour
             int x1 = Mathf.RoundToInt(t1 * (graphWidth - 1));
             int x2 = Mathf.RoundToInt(t2 * (graphWidth - 1));
 
-            // Y座標計算（値を正規化）
+            // Y座標計算（値を正規化して反転）
+            // Z値が大きい（天井）ほど下に、小さい（床）ほど上に表示
             float normalizedY1 = Mathf.InverseLerp(yMin, yMax, _dataPoints[i]);
             float normalizedY2 = Mathf.InverseLerp(yMin, yMax, _dataPoints[i + 1]);
-            int y1 = Mathf.RoundToInt(normalizedY1 * (graphHeight - 1));
-            int y2 = Mathf.RoundToInt(normalizedY2 * (graphHeight - 1));
+            int y1 = Mathf.RoundToInt((1.0f - normalizedY1) * (graphHeight - 1));
+            int y2 = Mathf.RoundToInt((1.0f - normalizedY2) * (graphHeight - 1));
 
             // 線を描画
             DrawLine(x1, y1, x2, y2, waveformColor);
