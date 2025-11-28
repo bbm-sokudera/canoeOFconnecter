@@ -96,6 +96,10 @@ public class OSCXPositionYVectorManager : MonoBehaviour
     [Tooltip("送信のクールダウン時間（秒）：この時間経過後のみ次の送信を許可")]
     public float cooldownTime = 0.3f;
 
+    [Header("Forward/Backward Mode")]
+    [Tooltip("前後の方向を無視する（ONの場合、前進も後進も同じ値を送信）")]
+    public bool ignoreForwardBackward = true;
+
     [Header("Consecutive Side Detection")]
     [Tooltip("左右連続検出を有効にする")]
     public bool enableConsecutiveSideDetection = false;
@@ -580,7 +584,7 @@ public class OSCXPositionYVectorManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 送信する値を決定（後進のみモード・左右ロックを考慮）
+    /// 送信する値を決定（前後区別モード・後進のみモード・左右ロックを考慮）
     /// </summary>
     private int DetermineValueToSend(CombinedDirection direction)
     {
@@ -589,6 +593,8 @@ public class OSCXPositionYVectorManager : MonoBehaviour
         // 基本は左右のみの判定
         bool isLeft = (direction == CombinedDirection.LeftForward || direction == CombinedDirection.LeftBackward);
         bool isRight = (direction == CombinedDirection.RightForward || direction == CombinedDirection.RightBackward);
+        bool isForward = (direction == CombinedDirection.LeftForward || direction == CombinedDirection.RightForward);
+        bool isBackward = (direction == CombinedDirection.LeftBackward || direction == CombinedDirection.RightBackward);
 
         // 左右ロック機能が有効な場合のロックチェック
         if (enableConsecutiveSideDetection)
@@ -608,38 +614,74 @@ public class OSCXPositionYVectorManager : MonoBehaviour
             }
         }
 
-        if (_isBackwardOnlyMode)
+        // 前後無視モードの場合（デフォルト動作）
+        if (ignoreForwardBackward)
         {
-            // 後進のみモード：左右に応じて後進値を送信
+            // 前進も後進も、左右の値のみを送信
             if (isLeft)
             {
-                value = leftBackwardValue;
-                LogDebug("Backward-only mode: Left → LeftBackward");
+                value = leftValue;
+                LogDebug("Ignore F/B mode: Left → " + leftValue);
             }
             else if (isRight)
             {
-                value = rightBackwardValue;
-                LogDebug("Backward-only mode: Right → RightBackward");
+                value = rightValue;
+                LogDebug("Ignore F/B mode: Right → " + rightValue);
             }
             else
             {
                 return -1;
             }
         }
+        // 前後区別モードの場合
         else
         {
-            // 通常モード：左右に応じて基本値を送信（前後は無視）
-            if (isLeft)
+            // 後進のみモードが有効な場合
+            if (_isBackwardOnlyMode)
             {
-                value = leftValue;
+                // 左右に応じて後進値を送信
+                if (isLeft)
+                {
+                    value = leftBackwardValue;
+                    LogDebug("Backward-only mode: Left → LeftBackward");
+                }
+                else if (isRight)
+                {
+                    value = rightBackwardValue;
+                    LogDebug("Backward-only mode: Right → RightBackward");
+                }
+                else
+                {
+                    return -1;
+                }
             }
-            else if (isRight)
-            {
-                value = rightValue;
-            }
+            // 通常モード：前進と後進で値を区別
             else
             {
-                return -1;
+                if (direction == CombinedDirection.LeftForward)
+                {
+                    value = leftValue;
+                    LogDebug("F/B distinction mode: LeftForward → " + leftValue);
+                }
+                else if (direction == CombinedDirection.RightForward)
+                {
+                    value = rightValue;
+                    LogDebug("F/B distinction mode: RightForward → " + rightValue);
+                }
+                else if (direction == CombinedDirection.LeftBackward)
+                {
+                    value = leftBackwardValue;
+                    LogDebug("F/B distinction mode: LeftBackward → " + leftBackwardValue);
+                }
+                else if (direction == CombinedDirection.RightBackward)
+                {
+                    value = rightBackwardValue;
+                    LogDebug("F/B distinction mode: RightBackward → " + rightBackwardValue);
+                }
+                else
+                {
+                    return -1;
+                }
             }
         }
 
