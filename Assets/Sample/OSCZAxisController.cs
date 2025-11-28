@@ -33,6 +33,19 @@ public class OSCZAxisController : MonoBehaviour
     [Tooltip("現在のZ値を表示するText")]
     public Text currentZValueText;
 
+    [Header("Save/Load")]
+    [Tooltip("設定を保存するボタン")]
+    public Button saveButton;
+
+    [Tooltip("設定をリセットするボタン")]
+    public Button resetButton;
+
+    // PlayerPrefsのキー
+    private const string PREFS_KEY_MIN = "OSC_ZAxis_Min";
+    private const string PREFS_KEY_MAX = "OSC_ZAxis_Max";
+    private const float DEFAULT_MIN = 0.0f;
+    private const float DEFAULT_MAX = 2.0f;
+
     void Start()
     {
         // ボタンのイベント設定
@@ -42,6 +55,12 @@ public class OSCZAxisController : MonoBehaviour
         if (setMaxButton != null)
             setMaxButton.onClick.AddListener(OnSetMaxClicked);
 
+        if (saveButton != null)
+            saveButton.onClick.AddListener(OnSaveClicked);
+
+        if (resetButton != null)
+            resetButton.onClick.AddListener(OnResetClicked);
+
         // 入力フィールドのイベント設定
         if (minInputField != null)
             minInputField.onEndEdit.AddListener(OnMinValueChanged);
@@ -49,8 +68,8 @@ public class OSCZAxisController : MonoBehaviour
         if (maxInputField != null)
             maxInputField.onEndEdit.AddListener(OnMaxValueChanged);
 
-        // 初期値をロード
-        LoadCurrentValues();
+        // 保存された値をロード
+        LoadSettings();
     }
 
     void Update()
@@ -72,18 +91,70 @@ public class OSCZAxisController : MonoBehaviour
     }
 
     /// <summary>
-    /// 現在の設定値をロード
+    /// 保存された設定値をロード（なければデフォルト値）
     /// </summary>
-    void LoadCurrentValues()
+    void LoadSettings()
     {
         if (targetManager == null)
             return;
 
+        // PlayerPrefsから読み込み（なければデフォルト値）
+        float minValue = PlayerPrefs.GetFloat(PREFS_KEY_MIN, DEFAULT_MIN);
+        float maxValue = PlayerPrefs.GetFloat(PREFS_KEY_MAX, DEFAULT_MAX);
+
+        // Managerに設定
+        targetManager.conditionalAxisMin = minValue;
+        targetManager.conditionalAxisMax = maxValue;
+
+        // UIに反映
         if (minInputField != null)
-            minInputField.text = targetManager.conditionalAxisMin.ToString("F3");
+            minInputField.text = minValue.ToString("F3");
 
         if (maxInputField != null)
-            maxInputField.text = targetManager.conditionalAxisMax.ToString("F3");
+            maxInputField.text = maxValue.ToString("F3");
+
+        Debug.Log($"[OSCZAxisController] Settings loaded: Min={minValue:F3}, Max={maxValue:F3}");
+    }
+
+    /// <summary>
+    /// 現在の設定を保存
+    /// </summary>
+    void SaveSettings()
+    {
+        if (targetManager == null)
+            return;
+
+        float minValue = targetManager.conditionalAxisMin;
+        float maxValue = targetManager.conditionalAxisMax;
+
+        // PlayerPrefsに保存
+        PlayerPrefs.SetFloat(PREFS_KEY_MIN, minValue);
+        PlayerPrefs.SetFloat(PREFS_KEY_MAX, maxValue);
+        PlayerPrefs.Save();
+
+        Debug.Log($"[OSCZAxisController] Settings saved: Min={minValue:F3}, Max={maxValue:F3}");
+    }
+
+    /// <summary>
+    /// 設定をデフォルト値にリセット
+    /// </summary>
+    void ResetSettings()
+    {
+        if (targetManager == null)
+            return;
+
+        // デフォルト値を設定
+        targetManager.conditionalAxisMin = DEFAULT_MIN;
+        targetManager.conditionalAxisMax = DEFAULT_MAX;
+
+        // UIに反映
+        if (minInputField != null)
+            minInputField.text = DEFAULT_MIN.ToString("F3");
+
+        if (maxInputField != null)
+            maxInputField.text = DEFAULT_MAX.ToString("F3");
+
+        Debug.Log($"[OSCZAxisController] Settings reset to defaults: Min={DEFAULT_MIN:F3}, Max={DEFAULT_MAX:F3}");
     }
 
     /// <summary>
@@ -170,6 +241,22 @@ public class OSCZAxisController : MonoBehaviour
             targetManager.conditionalAxisMax = result;
             Debug.Log($"[OSCZAxisController] Conditional Axis Max changed to: {result:F3}");
         }
+    }
+
+    /// <summary>
+    /// 保存ボタンがクリックされた時
+    /// </summary>
+    void OnSaveClicked()
+    {
+        SaveSettings();
+    }
+
+    /// <summary>
+    /// リセットボタンがクリックされた時
+    /// </summary>
+    void OnResetClicked()
+    {
+        ResetSettings();
     }
 
     /// <summary>
