@@ -305,10 +305,11 @@ public class OSCZAxisOscilloscope : MonoBehaviour
 
         // Y座標を計算（値を正規化）
         // Z値が大きい（天井）ほど上に、小さい（床）ほど下に表示
+        // テクスチャ座標を反転：Z=2m（天井）→y=0（画面上端）、Z=0m（床）→y=255（画面下端）
         float normalizedMin = Mathf.InverseLerp(yMin, yMax, rangeMin);
         float normalizedMax = Mathf.InverseLerp(yMin, yMax, rangeMax);
-        int yMinPixel = Mathf.RoundToInt(normalizedMin * (graphHeight - 1));
-        int yMaxPixel = Mathf.RoundToInt(normalizedMax * (graphHeight - 1));
+        int yMinPixel = Mathf.RoundToInt((1.0f - normalizedMin) * (graphHeight - 1));
+        int yMaxPixel = Mathf.RoundToInt((1.0f - normalizedMax) * (graphHeight - 1));
 
         // Max値の方が大きいピクセル値（グラフの上側）
         int yTop = Mathf.Max(yMinPixel, yMaxPixel);    // 画面上の上端（大きいピクセル値）
@@ -406,10 +407,11 @@ public class OSCZAxisOscilloscope : MonoBehaviour
 
             // Y座標計算（値を正規化）
             // Z値が大きい（天井）ほど上に、小さい（床）ほど下に表示
+            // テクスチャ座標を反転：Z=2m（天井）→y=0（画面上端）、Z=0m（床）→y=255（画面下端）
             float normalizedY1 = Mathf.InverseLerp(yMin, yMax, _dataPoints[i]);
             float normalizedY2 = Mathf.InverseLerp(yMin, yMax, _dataPoints[i + 1]);
-            int y1 = Mathf.RoundToInt(normalizedY1 * (graphHeight - 1));
-            int y2 = Mathf.RoundToInt(normalizedY2 * (graphHeight - 1));
+            int y1 = Mathf.RoundToInt((1.0f - normalizedY1) * (graphHeight - 1));
+            int y2 = Mathf.RoundToInt((1.0f - normalizedY2) * (graphHeight - 1));
 
             // 線を描画
             DrawLine(x1, y1, x2, y2, waveformColor);
