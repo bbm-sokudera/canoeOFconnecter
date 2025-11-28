@@ -304,13 +304,15 @@ public class OSCZAxisOscilloscope : MonoBehaviour
             return;
 
         // Y座標を計算（値を正規化）
-        // rangeMax（天井側、大きいZ値）→ yTop = 255
-        // rangeMin（床側、小さいZ値）→ yBottom = 0
+        // テクスチャ座標を反転：Z=2m（天井）→y=0（画面上端）、Z=0m（床）→y=255（画面下端）
         float normalizedMin = Mathf.InverseLerp(yMin, yMax, rangeMin);
         float normalizedMax = Mathf.InverseLerp(yMin, yMax, rangeMax);
 
-        int yTop = Mathf.RoundToInt(normalizedMax * (graphHeight - 1));
-        int yBottom = Mathf.RoundToInt(normalizedMin * (graphHeight - 1));
+        // rangeMax（天井側、大きいZ値）→ 画面上端（小さいy値）
+        int yTop = Mathf.RoundToInt((1.0f - normalizedMax) * (graphHeight - 1));
+
+        // rangeMin（床側、小さいZ値）→ 画面下端（大きいy値）
+        int yBottom = Mathf.RoundToInt((1.0f - normalizedMin) * (graphHeight - 1));
 
         // 範囲が画面外の場合はクランプ
         yTop = Mathf.Clamp(yTop, 0, graphHeight - 1);
