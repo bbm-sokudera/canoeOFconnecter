@@ -145,11 +145,9 @@ public class OSCXPositionYVectorManager : MonoBehaviour
     private OSCTransmitter _transmitter;
     private OSCBind _currentBind;
 
-    private Vector3 _previousPosition = Vector3.zero;
-    private Vector3 _currentPosition = Vector3.zero;
-    private Vector3 _movementVector = Vector3.zero;
-    private Vector3 _trackingBoxSize = Vector3.zero; // BoxX, BoxY, BoxZ
-    private bool _isFirstPosition = true;
+    private Vector3 _currentPosition = Vector3.zero;       // OSCから受信した位置（原点）
+    private Vector3 _movementVector = Vector3.zero;        // OSCから受信したベクトル
+    private Vector3 _trackingBoxSize = Vector3.zero;       // OSCから受信したボックスサイズ
 
     private XPosition _currentXPosition = XPosition.Right;
     private YVectorDirection _currentYDirection = YVectorDirection.None;
@@ -275,6 +273,13 @@ public class OSCXPositionYVectorManager : MonoBehaviour
             message.Values[2].FloatValue
         );
 
+        // 移動ベクトルを更新（vectorX, vectorY, vectorZ）※OSCから直接受信
+        _movementVector = new Vector3(
+            message.Values[3].FloatValue,
+            message.Values[4].FloatValue,
+            message.Values[5].FloatValue
+        );
+
         // トラッキングボックスのサイズを更新（BoxX, BoxY, BoxZ）
         _trackingBoxSize = new Vector3(
             message.Values[6].FloatValue,
@@ -282,7 +287,7 @@ public class OSCXPositionYVectorManager : MonoBehaviour
             message.Values[8].FloatValue
         );
 
-        LogDebug($"Received position: {_currentPosition}, BoxSize: {_trackingBoxSize}");
+        LogDebug($"Received position: {_currentPosition}, Vector: {_movementVector}, BoxSize: {_trackingBoxSize}");
 
         // 条件軸（Z軸）のチェック（有効な場合）
         if (enableConditionalAxis)
@@ -299,20 +304,8 @@ public class OSCXPositionYVectorManager : MonoBehaviour
             LogDebug($"Conditional axis (Z) value {zValue:F3} is within range [{conditionalAxisMin:F3}, {conditionalAxisMax:F3}]. Processing...");
         }
 
-        // 初回は前回位置を設定するだけ
-        if (_isFirstPosition)
-        {
-            _previousPosition = _currentPosition;
-            _isFirstPosition = false;
-            LogDebug("First position set. Waiting for next position to calculate vector.");
-            return;
-        }
-
-        // 判定処理を実行
+        // 判定処理を実行（OSCから受信したベクトルを使用）
         ProcessPositionAndVector();
-
-        // 前回位置を更新
-        _previousPosition = _currentPosition;
     }
 
     #endregion
@@ -327,31 +320,28 @@ public class OSCXPositionYVectorManager : MonoBehaviour
         // 1. X軸の位置を判定（現在のX座標が中心より左か右か）
         _currentXPosition = DetermineXPosition(_currentPosition.x);
 
-        // 2. 移動ベクトルを計算
-        _movementVector = _currentPosition - _previousPosition;
-
-        // 3. Y軸のベクトル方向を判定
+        // 2. Y軸のベクトル方向を判定（OSCから受信したvectorYを使用）
         _currentYDirection = DetermineYVectorDirection(_movementVector);
 
         LogDebug($"X Position: {_currentXPosition} (x={_currentPosition.x:F3})");
         LogDebug($"Y Vector: {_movementVector.y:F3}, Direction: {_currentYDirection}");
 
-        // 4. Y軸ベクトルが閾値未満または方向不明の場合はスキップ
+        // 3. Y軸ベクトルが閾値未満または方向不明の場合はスキップ
         if (_currentYDirection == YVectorDirection.None)
         {
-            LogDebug($"Y vector magnitude {Mathf.Abs(_movementVector.y):F3} is below threshold {yVectorMagnitudeThreshold:F3} or unclear direction. Skipping.");
+            LogDebug($"Y vector magnitude {Mathf.Abs(_movementVector.y):F3} is below threshold {yVectorMagnitudeThreshold:F3}. Skipping.");
             return;
         }
 
-        // 5. X位置とY方向を組み合わせて判定
+        // 4. X位置とY方向を組み合わせて判定
         CombinedDirection combinedDirection = CombineXPositionAndYDirection(_currentXPosition, _currentYDirection);
 
         LogDebug($"Combined Direction: {combinedDirection}");
 
-        // 6. イベントを発火
+        // 5. イベントを発火
         onDirectionDetected?.Invoke(combinedDirection);
 
-        // 7. 方向に応じた値を送信
+        // 6. 方向に応じた値を送信
         SendDirectionValue(combinedDirection);
     }
 
@@ -364,11 +354,11 @@ public class OSCXPositionYVectorManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Y軸のベクトル方向を判定
+    /// Y軸のベクトル方向を判定（OSCから受信したvectorYを使用）
     /// </summary>
     private YVectorDirection DetermineYVectorDirection(Vector3 vector)
     {
-        // Y成分の大きさをチェック
+        // vectorYの大きさをチェック（閾値未満ならNone）
         float yMagnitude = Mathf.Abs(vector.y);
 
         if (yMagnitude < yVectorMagnitudeThreshold)
@@ -376,24 +366,7 @@ public class OSCXPositionYVectorManager : MonoBehaviour
             return YVectorDirection.None;
         }
 
-        // Y軸方向との角度をチェック（オプション）
-        Vector3 yAxisForward = Vector3.up;    // Y+方向
-        Vector3 yAxisBackward = Vector3.down; // Y-方向
-
-        float angleForward = Vector3.Angle(yAxisForward, vector);
-        float angleBackward = Vector3.Angle(yAxisBackward, vector);
-
-        // どちらか近い方を選択
-        if (angleForward < angleBackward && angleForward <= yAngleThreshold)
-        {
-            return YVectorDirection.Forward;
-        }
-        else if (angleBackward <= yAngleThreshold)
-        {
-            return YVectorDirection.Backward;
-        }
-
-        // 角度閾値を超えている場合は、単純にY成分の正負で判定
+        // vectorYの正負で前後を判定
         if (vector.y > 0)
             return YVectorDirection.Forward;
         else if (vector.y < 0)
