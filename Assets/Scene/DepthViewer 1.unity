@@ -1940,9 +1940,9 @@ RectTransform:
   m_Father: {fileID: 1112192153}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 20}
+  m_SizeDelta: {x: -11, y: 20}
   m_Pivot: {x: 0, y: 0}
 --- !u!114 &490936796
 MonoBehaviour:
@@ -2857,7 +2857,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &736136560
 RectTransform:
   m_ObjectHideFlags: 0
@@ -2908,8 +2908,7 @@ RectTransform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 811505629}
+  m_Children: []
   m_Father: {fileID: 1708887191}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
@@ -3289,7 +3288,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &811505629
 RectTransform:
   m_ObjectHideFlags: 0
@@ -3308,7 +3307,7 @@ RectTransform:
   - {fileID: 1112192153}
   - {fileID: 2043828589}
   - {fileID: 1878155059}
-  m_Father: {fileID: 759286255}
+  m_Father: {fileID: 1708887191}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
@@ -4127,9 +4126,9 @@ RectTransform:
   m_Father: {fileID: 1112192153}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0}
-  m_AnchorMax: {x: 1, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 14, y: 0}
+  m_SizeDelta: {x: 14, y: -17}
   m_Pivot: {x: 1, y: 1}
 --- !u!114 &982917449
 MonoBehaviour:
@@ -4251,7 +4250,7 @@ RectTransform:
   m_Father: {fileID: 154409797}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 20, y: 20}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -5343,7 +5342,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1154242071
 RectTransform:
   m_ObjectHideFlags: 0
@@ -5554,9 +5553,9 @@ RectTransform:
   m_Father: {fileID: 1112192153}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_SizeDelta: {x: -11, y: -17}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1195571301
 MonoBehaviour:
@@ -6878,8 +6877,8 @@ MonoBehaviour:
   targetManager: {fileID: 1594698861}
   graphImage: {fileID: 850191648}
   visibilityToggle: {fileID: 1616404630}
-  minInputField: {fileID: 5348819}
-  maxInputField: {fileID: 1340396761}
+  minInputField: {fileID: 1340396761}
+  maxInputField: {fileID: 5348819}
   maxDataPoints: 100
   samplingInterval: 1
   graphWidth: 512
@@ -8218,7 +8217,8 @@ MonoBehaviour:
   enableConditionalAxis: 1
   conditionalAxisMin: 0.88
   conditionalAxisMax: 1
-  cooldownTime: 0.2
+  cooldownTime: 0.4
+  ignoreForwardBackward: 1
   enableConsecutiveSideDetection: 0
   consecutiveSideLimit: 4
   oppositeSideRequiredCount: 2
@@ -8614,6 +8614,7 @@ RectTransform:
   m_Children:
   - {fileID: 786454519}
   - {fileID: 759286255}
+  - {fileID: 811505629}
   - {fileID: 736136560}
   - {fileID: 424677558}
   - {fileID: 1192914709}
@@ -9972,7 +9973,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 76, y: 124}
+  m_AnchoredPosition: {x: 76, y: 101}
   m_SizeDelta: {x: 16.7, y: 76.2}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2044266598
@@ -10045,8 +10046,8 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1038430409}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 0.45666665}
+  m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 20, y: 20}
   m_Pivot: {x: 0.5, y: 0.5}
