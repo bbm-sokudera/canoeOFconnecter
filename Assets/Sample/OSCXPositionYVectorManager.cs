@@ -148,6 +148,7 @@ public class OSCXPositionYVectorManager : MonoBehaviour
     private Vector3 _previousPosition = Vector3.zero;
     private Vector3 _currentPosition = Vector3.zero;
     private Vector3 _movementVector = Vector3.zero;
+    private Vector3 _trackingBoxSize = Vector3.zero; // BoxX, BoxY, BoxZ
     private bool _isFirstPosition = true;
 
     private XPosition _currentXPosition = XPosition.Right;
@@ -261,25 +262,33 @@ public class OSCXPositionYVectorManager : MonoBehaviour
     /// </summary>
     private void OnPositionReceived(OSCMessage message)
     {
-        if (message.Values.Count < 3)
+        if (message.Values.Count < 9)
         {
-            LogDebug($"Invalid message format. Expected 3 values (x,y,z), got {message.Values.Count}");
+            LogDebug($"Invalid message format. Expected 9 values (x,y,z,vx,vy,vz,bx,by,bz), got {message.Values.Count}");
             return;
         }
 
-        // 現在の位置を更新
+        // 現在の位置を更新（floatX, Y, Z）
         _currentPosition = new Vector3(
             message.Values[0].FloatValue,
             message.Values[1].FloatValue,
             message.Values[2].FloatValue
         );
 
-        LogDebug($"Received position: {_currentPosition}");
+        // トラッキングボックスのサイズを更新（BoxX, BoxY, BoxZ）
+        _trackingBoxSize = new Vector3(
+            message.Values[6].FloatValue,
+            message.Values[7].FloatValue,
+            message.Values[8].FloatValue
+        );
+
+        LogDebug($"Received position: {_currentPosition}, BoxSize: {_trackingBoxSize}");
 
         // 条件軸（Z軸）のチェック（有効な場合）
         if (enableConditionalAxis)
         {
-            float zValue = _currentPosition.z;
+            // トラッキングボックスの上端のZ値を使用
+            float zValue = _currentPosition.z + _trackingBoxSize.z * 0.5f;
 
             // Z軸が範囲外の場合は処理をスキップ（ログは出力しない）
             if (zValue < conditionalAxisMin || zValue > conditionalAxisMax)
@@ -856,11 +865,32 @@ public class OSCXPositionYVectorManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 現在のOSC受信位置を取得
+    /// 現在のOSC受信位置を取得（トラッキングボックスの上端）
+    /// Z値はボックスの上端（Z + BoxZ/2）を返す
     /// </summary>
     public Vector3 GetCurrentPosition()
     {
+        return new Vector3(
+            _currentPosition.x,
+            _currentPosition.y,
+            _currentPosition.z + _trackingBoxSize.z * 0.5f
+        );
+    }
+
+    /// <summary>
+    /// トラッキングボックスの原点位置を取得（オフセット補正なし）
+    /// </summary>
+    public Vector3 GetRawPosition()
+    {
         return _currentPosition;
+    }
+
+    /// <summary>
+    /// トラッキングボックスのサイズを取得
+    /// </summary>
+    public Vector3 GetTrackingBoxSize()
+    {
+        return _trackingBoxSize;
     }
 
     /// <summary>
