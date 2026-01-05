@@ -287,16 +287,21 @@ public class MultiAddressOSCManager : MonoBehaviour
         // Receivers初期化（ポートごとに1つのReceiver）
         foreach (var addr in _config.receive)
         {
+            OSCReceiver receiver;
+
             if (!_receivers.ContainsKey(addr.port))
             {
-                var receiver = gameObject.AddComponent<OSCReceiver>();
+                receiver = gameObject.AddComponent<OSCReceiver>();
                 receiver.LocalPort = addr.port;
                 _receivers[addr.port] = receiver;
                 LogDebug($"OSC Receiver created on port {addr.port}");
             }
+            else
+            {
+                receiver = _receivers[addr.port];
+            }
 
             // アドレスをバインド
-            var receiver = _receivers[addr.port];
             receiver.Bind(addr.address, (msg) => OnOSCMessageReceived(addr.address, msg));
             LogDebug($"Bound {addr.address} on port {addr.port}");
         }
