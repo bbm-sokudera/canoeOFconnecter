@@ -735,7 +735,7 @@ public class OSCXPositionYVectorManager : MonoBehaviour
     /// </summary>
     public void ResetPosition()
     {
-        _isFirstPosition = true;
+        //_isFirstPosition = true;
         _movementVector = Vector3.zero;
 
         // 左右連続検出のカウンターリセット
