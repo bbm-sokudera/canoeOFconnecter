@@ -28,8 +28,11 @@ public class StateController : MonoBehaviour
     public MultiAddressOSCManager oscManager;
 
     [Header("UI")]
-    [Tooltip("現在のStateを表示するText")]
+    [Tooltip("現在のStateを表示するText（UI.Text使用時）")]
     public UnityEngine.UI.Text stateDisplayText;
+
+    [Tooltip("現在のStateを表示するText（TextMeshPro使用時）")]
+    public TMPro.TextMeshProUGUI stateDisplayTextTMP;
 
     [Header("Events")]
     [Tooltip("State変更時に呼ばれるイベント（新しいState値を渡す）")]
@@ -137,11 +140,20 @@ public class StateController : MonoBehaviour
     /// </summary>
     void UpdateStateDisplay()
     {
-        if (stateDisplayText == null)
-            return;
-
         string stateName = GetStateName(_currentState);
-        stateDisplayText.text = $"State: {(int)_currentState} - {stateName}";
+        string displayText = $"State: {(int)_currentState} - {stateName}";
+
+        // UI.Text対応
+        if (stateDisplayText != null)
+        {
+            stateDisplayText.text = displayText;
+        }
+
+        // TextMeshPro対応
+        if (stateDisplayTextTMP != null)
+        {
+            stateDisplayTextTMP.text = displayText;
+        }
     }
 
     /// <summary>

@@ -26,6 +26,13 @@ public class QuizController : MonoBehaviour
     [Tooltip("StateController（クイズモード判定用）")]
     public StateController stateController;
 
+    [Header("UI")]
+    [Tooltip("現在の選択を表示するText（UI.Text使用時）")]
+    public UnityEngine.UI.Text choiceDisplayText;
+
+    [Tooltip("現在の選択を表示するText（TextMeshPro使用時）")]
+    public TMPro.TextMeshProUGUI choiceDisplayTextTMP;
+
     [Header("Quiz Settings")]
     [Tooltip("選択判定のX座標中心")]
     public float xCenterPosition = 0f;
@@ -80,6 +87,9 @@ public class QuizController : MonoBehaviour
         // 現在の選択を更新
         UpdateCurrentChoice();
 
+        // UI更新
+        UpdateChoiceDisplay();
+
         // 自動選択モード
         if (autoSelectMode)
         {
@@ -118,6 +128,41 @@ public class QuizController : MonoBehaviour
         else
         {
             _currentChoice = QuizChoice.Left; // 2: 左選択
+        }
+    }
+
+    /// <summary>
+    /// 選択表示を更新
+    /// </summary>
+    void UpdateChoiceDisplay()
+    {
+        string choiceName = GetChoiceName(_currentChoice);
+        string displayText = $"Quiz: {(int)_currentChoice} - {choiceName}";
+
+        // UI.Text対応
+        if (choiceDisplayText != null)
+        {
+            choiceDisplayText.text = displayText;
+        }
+
+        // TextMeshPro対応
+        if (choiceDisplayTextTMP != null)
+        {
+            choiceDisplayTextTMP.text = displayText;
+        }
+    }
+
+    /// <summary>
+    /// 選択の日本語名を取得
+    /// </summary>
+    string GetChoiceName(QuizChoice choice)
+    {
+        switch (choice)
+        {
+            case QuizChoice.None: return "選択していない";
+            case QuizChoice.Right: return "右選択";
+            case QuizChoice.Left: return "左選択";
+            default: return "Unknown";
         }
     }
 
