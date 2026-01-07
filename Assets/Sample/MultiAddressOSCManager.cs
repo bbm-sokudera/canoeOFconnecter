@@ -72,7 +72,7 @@ public class MultiAddressOSCManager : MonoBehaviour
     #region Private Variables
 
     private Dictionary<int, OSCReceiver> _receivers = new Dictionary<int, OSCReceiver>(); // port → receiver
-    private OSCTransmitter _transmitter; // 単一のtransmitter（送信先は動的に変更）
+    private Dictionary<string, OSCTransmitter> _transmitters = new Dictionary<string, OSCTransmitter>(); // "host:port" → transmitter
     private OSCConfig _config;
     private Dictionary<string, OSCParameter> _allParams = new Dictionary<string, OSCParameter>();
 
@@ -94,8 +94,11 @@ public class MultiAddressOSCManager : MonoBehaviour
                 receiver.Close();
         }
 
-        if (_transmitter != null)
-            _transmitter.Close();
+        foreach (var transmitter in _transmitters.Values)
+        {
+            if (transmitter != null)
+                transmitter.Close();
+        }
     }
 
     #endregion
@@ -306,15 +309,19 @@ public class MultiAddressOSCManager : MonoBehaviour
             LogDebug($"Bound {addr.address} on port {addr.port}");
         }
 
-        // Transmitter初期化（1つだけ、送信時にアドレスを指定）
-        if (_config.transmit.Count > 0)
+        // Transmitter初期化（host:portごとに1つのTransmitter）
+        foreach (var addr in _config.transmit)
         {
-            _transmitter = gameObject.AddComponent<OSCTransmitter>();
-            // デフォルトは最初の送信先
-            var first = _config.transmit[0];
-            _transmitter.RemoteHost = first.host;
-            _transmitter.RemotePort = first.port;
-            LogDebug($"OSC Transmitter initialized: {first.host}:{first.port}");
+            string key = $"{addr.host}:{addr.port}";
+
+            if (!_transmitters.ContainsKey(key))
+            {
+                var transmitter = gameObject.AddComponent<OSCTransmitter>();
+                transmitter.RemoteHost = addr.host;
+                transmitter.RemotePort = addr.port;
+                _transmitters[key] = transmitter;
+                LogDebug($"OSC Transmitter created: {addr.host}:{addr.port}");
+            }
         }
     }
 
@@ -366,7 +373,7 @@ public class MultiAddressOSCManager : MonoBehaviour
     /// </summary>
     public void SendMessage(string address)
     {
-        if (_transmitter == null || _config == null)
+        if (_config == null)
             return;
 
         var addrConfig = _config.transmit.FirstOrDefault(a => a.address == address);
@@ -376,9 +383,13 @@ public class MultiAddressOSCManager : MonoBehaviour
             return;
         }
 
-        // Transmitterの送信先を更新
-        _transmitter.RemoteHost = addrConfig.host;
-        _transmitter.RemotePort = addrConfig.port;
+        // 対応するTransmitterを取得
+        string key = $"{addrConfig.host}:{addrConfig.port}";
+        if (!_transmitters.TryGetValue(key, out OSCTransmitter transmitter))
+        {
+            Debug.LogWarning($"[MultiAddressOSCManager] No transmitter found for {key}");
+            return;
+        }
 
         var message = new OSCMessage(address);
 
@@ -401,8 +412,8 @@ public class MultiAddressOSCManager : MonoBehaviour
             }
         }
 
-        _transmitter.Send(message);
-        LogDebug($"Sent OSC message to {address}");
+        transmitter.Send(message);
+        LogDebug($"Sent OSC message to {address} on {key}");
     }
 
     #endregion
