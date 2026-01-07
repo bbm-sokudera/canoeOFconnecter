@@ -27,6 +27,10 @@ public class StateController : MonoBehaviour
     [Tooltip("MultiAddressOSCManager")]
     public MultiAddressOSCManager oscManager;
 
+    [Header("UI")]
+    [Tooltip("現在のStateを表示するText")]
+    public UnityEngine.UI.Text stateDisplayText;
+
     [Header("Events")]
     [Tooltip("State変更時に呼ばれるイベント（新しいState値を渡す）")]
     public UnityEvent<GameState> onStateChanged;
@@ -84,6 +88,9 @@ public class StateController : MonoBehaviour
             OnStateChanged(_currentState, newState);
             _currentState = newState;
         }
+
+        // UI更新
+        UpdateStateDisplay();
     }
 
     #endregion
@@ -122,6 +129,35 @@ public class StateController : MonoBehaviour
             case GameState.Game:
                 onGameStart?.Invoke();
                 break;
+        }
+    }
+
+    /// <summary>
+    /// State表示を更新
+    /// </summary>
+    void UpdateStateDisplay()
+    {
+        if (stateDisplayText == null)
+            return;
+
+        string stateName = GetStateName(_currentState);
+        stateDisplayText.text = $"State: {(int)_currentState} - {stateName}";
+    }
+
+    /// <summary>
+    /// Stateの日本語名を取得
+    /// </summary>
+    string GetStateName(GameState state)
+    {
+        switch (state)
+        {
+            case GameState.Other: return "その他";
+            case GameState.CalibrationStart: return "キャリブレーション開始";
+            case GameState.CalibrationEnd: return "キャリブレーション終了";
+            case GameState.Tutorial: return "チュートリアル";
+            case GameState.Quiz: return "クイズ";
+            case GameState.Game: return "ゲーム";
+            default: return "Unknown";
         }
     }
 

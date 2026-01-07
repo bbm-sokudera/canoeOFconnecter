@@ -27,17 +27,23 @@ public class QuizController : MonoBehaviour
     public StateController stateController;
 
     [Header("Quiz Settings")]
-    [Tooltip("選択判定のX座標閾値")]
-    public float xThreshold = 0f;
+    [Tooltip("選択判定のX座標中心")]
+    public float xCenterPosition = 0f;
 
-    [Tooltip("選択確定のキー（テスト用）")]
+    [Tooltip("X軸の最小値（この値未満は範囲外）")]
+    public float xMin = -1.0f;
+
+    [Tooltip("X軸の最大値（この値より大きいと範囲外）")]
+    public float xMax = 1.0f;
+
+    [Tooltip("選択確定のキー（テスト用・自動モードOFFの時のみ）")]
     public KeyCode confirmKey = KeyCode.Space;
 
     [Tooltip("自動選択モード（位置で自動的に選択を送信）")]
-    public bool autoSelectMode = false;
+    public bool autoSelectMode = true;
 
     [Tooltip("自動選択のクールダウン時間（秒）")]
-    public float autoSelectCooldown = 1.0f;
+    public float autoSelectCooldown = 0.5f;
 
     [Header("Events")]
     [Tooltip("選択を送信した時のイベント")]
@@ -91,24 +97,32 @@ public class QuizController : MonoBehaviour
     #region Quiz Logic
 
     /// <summary>
-    /// 現在の選択を更新
+    /// 現在の選択を更新（範囲判定あり）
     /// </summary>
     void UpdateCurrentChoice()
     {
         float posX = oscManager.GetFloat("PositionX");
 
-        if (posX >= xThreshold)
+        // 範囲外チェック
+        if (posX < xMin || posX > xMax)
         {
-            _currentChoice = QuizChoice.Right;
+            _currentChoice = QuizChoice.None; // 0: 選択していない
+            return;
+        }
+
+        // 範囲内での左右判定
+        if (posX >= xCenterPosition)
+        {
+            _currentChoice = QuizChoice.Right; // 1: 右選択
         }
         else
         {
-            _currentChoice = QuizChoice.Left;
+            _currentChoice = QuizChoice.Left; // 2: 左選択
         }
     }
 
     /// <summary>
-    /// 自動選択処理
+    /// 自動選択処理（範囲外も含めて常に送信）
     /// </summary>
     void HandleAutoSelect()
     {
@@ -116,11 +130,7 @@ public class QuizController : MonoBehaviour
         if (Time.time - _lastSelectTime < autoSelectCooldown)
             return;
 
-        // 選択なしはスキップ
-        if (_currentChoice == QuizChoice.None)
-            return;
-
-        // 選択を送信
+        // 現在の選択を送信（None=0も含む）
         SendQuizChoice(_currentChoice);
     }
 
