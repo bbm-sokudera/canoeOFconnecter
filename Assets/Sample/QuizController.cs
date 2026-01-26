@@ -72,6 +72,8 @@ public class QuizController : MonoBehaviour
     [SerializeField] private float _debugBoxZ;
     [SerializeField] private float _debugActualZ;
     [SerializeField] private bool _debugZInRange;
+    [SerializeField] private bool _debugRightZInRange;
+    [SerializeField] private bool _debugLeftZInRange;
     [SerializeField] private QuizChoice _debugCurrentChoice;
 
     #endregion
@@ -80,6 +82,10 @@ public class QuizController : MonoBehaviour
 
     private float _lastSelectTime = -999f;
     private QuizChoice _currentChoice = QuizChoice.None;
+
+    // 左右それぞれのZ範囲状態を追跡
+    private bool _rightZInRange = false;
+    private bool _leftZInRange = false;
 
     #endregion
 
@@ -132,7 +138,7 @@ public class QuizController : MonoBehaviour
     #region Quiz Logic
 
     /// <summary>
-    /// 現在の選択を更新（Z軸範囲 + X軸左右判定）
+    /// 現在の選択を更新（左右交互データ対応・両方範囲外でNone）
     /// </summary>
     void UpdateCurrentChoice()
     {
@@ -143,35 +149,53 @@ public class QuizController : MonoBehaviour
         // Z軸の実際の位置（ボックス上端）
         float actualZ = posZ + boxZ * 0.5f;
 
+        // 今回のデータがZ範囲内かどうか
+        bool currentZInRange = !enableZAxisFilter || (actualZ >= zMin && actualZ <= zMax);
+
+        // X座標で左右を判定し、該当側のZ範囲状態を更新
+        bool isRight = posX >= xCenterPosition;
+        if (isRight)
+        {
+            _rightZInRange = currentZInRange;
+        }
+        else
+        {
+            _leftZInRange = currentZInRange;
+        }
+
         // デバッグ値を更新
         _debugPositionX = posX;
         _debugPositionZ = posZ;
         _debugBoxZ = boxZ;
         _debugActualZ = actualZ;
-        _debugZInRange = !enableZAxisFilter || (actualZ >= zMin && actualZ <= zMax);
-        _debugCurrentChoice = _currentChoice;
+        _debugZInRange = currentZInRange;
+        _debugRightZInRange = _rightZInRange;
+        _debugLeftZInRange = _leftZInRange;
 
-        // Z軸範囲チェック（有効時）
-        if (enableZAxisFilter)
+        // 両方とも範囲外の場合のみNone
+        if (enableZAxisFilter && !_rightZInRange && !_leftZInRange)
         {
-            if (actualZ < zMin || actualZ > zMax)
-            {
-                _currentChoice = QuizChoice.None; // 0: 範囲外
-                _debugCurrentChoice = _currentChoice;
-                LogDebug($"Z={actualZ:F3} out of range [{zMin:F3}, {zMax:F3}]");
-                return;
-            }
+            _currentChoice = QuizChoice.None; // 0: 両方範囲外
+            _debugCurrentChoice = _currentChoice;
+            LogDebug($"Both sides out of Z range. Right:{_rightZInRange}, Left:{_leftZInRange}");
+            return;
         }
 
-        // X軸の左右判定（centerより右か左か）
-        if (posX >= xCenterPosition)
+        // どちらか片方でも範囲内なら、範囲内の側を選択
+        if (_rightZInRange && !_leftZInRange)
         {
-            _currentChoice = QuizChoice.Right; // 1: 右選択
+            _currentChoice = QuizChoice.Right; // 右のみ範囲内
+        }
+        else if (!_rightZInRange && _leftZInRange)
+        {
+            _currentChoice = QuizChoice.Left; // 左のみ範囲内
         }
         else
         {
-            _currentChoice = QuizChoice.Left; // 2: 左選択
+            // 両方範囲内の場合、今回のデータの側を選択
+            _currentChoice = isRight ? QuizChoice.Right : QuizChoice.Left;
         }
+
         _debugCurrentChoice = _currentChoice;
     }
 
