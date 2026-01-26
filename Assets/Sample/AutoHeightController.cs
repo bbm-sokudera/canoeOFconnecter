@@ -16,6 +16,9 @@ public class AutoHeightController : MonoBehaviour
     public float startDelay = 0.5f;
     public float zOffset = 0.05f;
 
+    [Tooltip("計算結果の最小値（この値以下は全てこの値に固定）")]
+    public float minResultFloor = 0.45f;
+
     [Header("Debug/Monitor (Values to Test)")]
     [SerializeField, Tooltip("計算された中央値")]
     private float lastMedianZ;
@@ -112,12 +115,20 @@ public class AutoHeightController : MonoBehaviour
     private void ProcessResult()
     {
         lastMedianZ = CalculateMedian(_zSamples);
-        lastCalculatedResult = lastMedianZ + zOffset;
-        
+
+        // 中央値 + offset を計算
+        float rawResult = lastMedianZ + zOffset;
+
+        // 小数点第3位を四捨五入（0.456 → 0.46）
+        float rounded = Mathf.Round(rawResult * 100f) / 100f;
+
+        // 最小値以下は最小値に固定
+        lastCalculatedResult = Mathf.Max(rounded, minResultFloor);
+
+        Debug.Log($"[AutoHeight] Raw={rawResult:F3}, Rounded={rounded:F2}, Final={lastCalculatedResult:F2}");
+
         // 自動計算後もUIに反映
         ApplyValuesToControllers();
-        
-        Debug.Log($"[AutoHeight] Auto-calculated Result: {lastCalculatedResult:F3}");
     }
 
     private float CalculateMedian(List<float> list)
