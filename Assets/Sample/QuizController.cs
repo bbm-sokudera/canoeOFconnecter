@@ -64,6 +64,16 @@ public class QuizController : MonoBehaviour
     [Tooltip("デバッグログを出力する")]
     public bool enableDebugLog = true;
 
+    [Header("Debug Monitor (実行中に確認)")]
+    [SerializeField] private int _debugState;
+    [SerializeField] private bool _debugIsQuizMode;
+    [SerializeField] private float _debugPositionX;
+    [SerializeField] private float _debugPositionZ;
+    [SerializeField] private float _debugBoxZ;
+    [SerializeField] private float _debugActualZ;
+    [SerializeField] private bool _debugZInRange;
+    [SerializeField] private QuizChoice _debugCurrentChoice;
+
     #endregion
 
     #region Private Variables
@@ -80,13 +90,24 @@ public class QuizController : MonoBehaviour
         if (oscManager == null)
             return;
 
+        // デバッグ: State値を取得
+        _debugState = oscManager.GetInt("State");
+
         // クイズモード(State=4)の時のみ動作
         if (stateController != null && !stateController.IsState(StateController.GameState.Quiz))
+        {
+            _debugIsQuizMode = false;
             return;
+        }
 
         // State直接チェック（stateControllerがない場合）
-        if (stateController == null && oscManager.GetInt("State") != 4)
+        if (stateController == null && _debugState != 4)
+        {
+            _debugIsQuizMode = false;
             return;
+        }
+
+        _debugIsQuizMode = true;
 
         // 現在の選択を更新
         UpdateCurrentChoice();
@@ -122,12 +143,21 @@ public class QuizController : MonoBehaviour
         // Z軸の実際の位置（ボックス上端）
         float actualZ = posZ + boxZ * 0.5f;
 
+        // デバッグ値を更新
+        _debugPositionX = posX;
+        _debugPositionZ = posZ;
+        _debugBoxZ = boxZ;
+        _debugActualZ = actualZ;
+        _debugZInRange = !enableZAxisFilter || (actualZ >= zMin && actualZ <= zMax);
+        _debugCurrentChoice = _currentChoice;
+
         // Z軸範囲チェック（有効時）
         if (enableZAxisFilter)
         {
             if (actualZ < zMin || actualZ > zMax)
             {
                 _currentChoice = QuizChoice.None; // 0: 範囲外
+                _debugCurrentChoice = _currentChoice;
                 LogDebug($"Z={actualZ:F3} out of range [{zMin:F3}, {zMax:F3}]");
                 return;
             }
@@ -142,6 +172,7 @@ public class QuizController : MonoBehaviour
         {
             _currentChoice = QuizChoice.Left; // 2: 左選択
         }
+        _debugCurrentChoice = _currentChoice;
     }
 
     /// <summary>
