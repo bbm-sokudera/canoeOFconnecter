@@ -210,6 +210,24 @@ public class PaddleController : MonoBehaviour
         return oscManager.GetVector3("VectorX", "VectorY", "VectorZ");
     }
 
+    /// <summary>
+    /// Z軸の最小値を設定（AutoHeightControllerから呼び出し用）
+    /// </summary>
+    public void SetZMin(float value)
+    {
+        conditionalAxisMin = value;
+        LogDebug($"Z Min set to: {value:F3}");
+    }
+
+    /// <summary>
+    /// Z軸の最大値を設定（AutoHeightControllerから呼び出し用）
+    /// </summary>
+    public void SetZMax(float value)
+    {
+        conditionalAxisMax = value;
+        LogDebug($"Z Max set to: {value:F3}");
+    }
+
     #endregion
 
     #region Debug

@@ -9,8 +9,8 @@ public class AutoHeightController : MonoBehaviour
 {
     [Header("References")]
     public MultiAddressOSCManager oscManager;
-    public OSCZAxisController zAxisController;
-    public OSCZAxisOscilloscope oscilloscope;
+    public QuizController quizController;
+    public PaddleController paddleController;
 
     [Header("PositionZ Logic Settings")]
     public float startDelay = 0.5f;
@@ -38,39 +38,31 @@ public class AutoHeightController : MonoBehaviour
     {
         if (Application.isPlaying)
         {
-            ApplyTestValuesToUI();
+            ApplyValuesToControllers();
         }
     }
 
     /// <summary>
-    /// 現在のインスペクター上の値をUIとオシロスコープに強制適用する
+    /// 計算結果をQuizControllerとPaddleControllerに適用する
     /// </summary>
     [ContextMenu("Apply Inspector Values Now")]
-    public void ApplyTestValuesToUI()
+    public void ApplyValuesToControllers()
     {
-        // 1. ZAxisControllerのInputFieldを書き換える
-        if (zAxisController != null)
+        // QuizControllerに反映
+        if (quizController != null)
         {
-            if (zAxisController.minInputField != null) 
-                zAxisController.minInputField.text = lastCalculatedResult.ToString("F3");
-            
-            if (zAxisController.maxInputField != null) 
-                zAxisController.maxInputField.text = testMaxResult.ToString("F3");
-            
-            // Manager内の変数も更新
-            zAxisController.SetExternalMin(lastCalculatedResult);
-            zAxisController.SetExternalMax(testMaxResult);
+            quizController.SetZMin(lastCalculatedResult);
+            quizController.SetZMax(testMaxResult);
         }
 
-        // 2. オシロスコープ側のInputFieldも同期（帯の表示用）
-        if (oscilloscope != null)
+        // PaddleControllerに反映
+        if (paddleController != null)
         {
-            if (oscilloscope.minInputField != null) 
-                oscilloscope.minInputField.text = lastCalculatedResult.ToString("F3");
-            
-            if (oscilloscope.maxInputField != null) 
-                oscilloscope.maxInputField.text = testMaxResult.ToString("F3");
+            paddleController.SetZMin(lastCalculatedResult);
+            paddleController.SetZMax(testMaxResult);
         }
+
+        Debug.Log($"[AutoHeight] Applied to controllers: Min={lastCalculatedResult:F3}, Max={testMaxResult:F3}");
     }
     #endregion
 
@@ -123,7 +115,7 @@ public class AutoHeightController : MonoBehaviour
         lastCalculatedResult = lastMedianZ + zOffset;
         
         // 自動計算後もUIに反映
-        ApplyTestValuesToUI();
+        ApplyValuesToControllers();
         
         Debug.Log($"[AutoHeight] Auto-calculated Result: {lastCalculatedResult:F3}");
     }
