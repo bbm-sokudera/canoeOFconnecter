@@ -37,6 +37,9 @@ public class PaddleController : MonoBehaviour
     [Tooltip("前後の方向を無視する")]
     public bool ignoreForwardBackward = true;
 
+    [Tooltip("左右を反転する（1↔2, 3↔4）")]
+    public bool invertLeftRight = false;
+
     [Header("Events")]
     [Tooltip("パドル操作を送信した時のイベント")]
     public UnityEvent<int> onPaddleSent;
@@ -133,6 +136,12 @@ public class PaddleController : MonoBehaviour
     /// </summary>
     int DeterminePaddleDirection(bool isRight, bool isForward)
     {
+        // 左右反転オプション
+        if (invertLeftRight)
+        {
+            isRight = !isRight;
+        }
+
         if (ignoreForwardBackward)
         {
             // 前後を無視（左右のみ）
