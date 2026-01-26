@@ -37,12 +37,6 @@ public class QuizController : MonoBehaviour
     [Tooltip("選択判定のX座標中心")]
     public float xCenterPosition = 0f;
 
-    [Tooltip("X軸の最小値（この値未満は範囲外）")]
-    public float xMin = -1.0f;
-
-    [Tooltip("X軸の最大値（この値より大きいと範囲外）")]
-    public float xMax = 1.0f;
-
     [Tooltip("選択確定のキー（テスト用・自動モードOFFの時のみ）")]
     public KeyCode confirmKey = KeyCode.Space;
 
@@ -117,7 +111,7 @@ public class QuizController : MonoBehaviour
     #region Quiz Logic
 
     /// <summary>
-    /// 現在の選択を更新（X軸・Z軸の範囲判定あり）
+    /// 現在の選択を更新（Z軸範囲 + X軸左右判定）
     /// </summary>
     void UpdateCurrentChoice()
     {
@@ -139,14 +133,7 @@ public class QuizController : MonoBehaviour
             }
         }
 
-        // X軸範囲外チェック
-        if (posX < xMin || posX > xMax)
-        {
-            _currentChoice = QuizChoice.None; // 0: 選択していない
-            return;
-        }
-
-        // 範囲内での左右判定
+        // X軸の左右判定（centerより右か左か）
         if (posX >= xCenterPosition)
         {
             _currentChoice = QuizChoice.Right; // 1: 右選択
