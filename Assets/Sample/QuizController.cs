@@ -52,6 +52,16 @@ public class QuizController : MonoBehaviour
     [Tooltip("自動選択のクールダウン時間（秒）")]
     public float autoSelectCooldown = 0.5f;
 
+    [Header("Z-Axis Filter (AutoHeight)")]
+    [Tooltip("Z軸範囲フィルタを有効にする")]
+    public bool enableZAxisFilter = true;
+
+    [Tooltip("Z軸の最小値（この値以上の時に有効）")]
+    public float zMin = 0f;
+
+    [Tooltip("Z軸の最大値（この値以下の時に有効）")]
+    public float zMax = 2.0f;
+
     [Header("Events")]
     [Tooltip("選択を送信した時のイベント")]
     public UnityEvent<QuizChoice> onQuizSelected;
@@ -107,13 +117,29 @@ public class QuizController : MonoBehaviour
     #region Quiz Logic
 
     /// <summary>
-    /// 現在の選択を更新（範囲判定あり）
+    /// 現在の選択を更新（X軸・Z軸の範囲判定あり）
     /// </summary>
     void UpdateCurrentChoice()
     {
         float posX = oscManager.GetFloat("PositionX");
+        float posZ = oscManager.GetFloat("PositionZ");
+        float boxZ = oscManager.GetFloat("BoxZ");
 
-        // 範囲外チェック
+        // Z軸の実際の位置（ボックス上端）
+        float actualZ = posZ + boxZ * 0.5f;
+
+        // Z軸範囲チェック（有効時）
+        if (enableZAxisFilter)
+        {
+            if (actualZ < zMin || actualZ > zMax)
+            {
+                _currentChoice = QuizChoice.None; // 0: 範囲外
+                LogDebug($"Z={actualZ:F3} out of range [{zMin:F3}, {zMax:F3}]");
+                return;
+            }
+        }
+
+        // X軸範囲外チェック
         if (posX < xMin || posX > xMax)
         {
             _currentChoice = QuizChoice.None; // 0: 選択していない
@@ -236,6 +262,24 @@ public class QuizController : MonoBehaviour
         {
             SendQuizChoice(_currentChoice);
         }
+    }
+
+    /// <summary>
+    /// Z軸の最小値を設定（AutoHeightControllerから呼び出し用）
+    /// </summary>
+    public void SetZMin(float value)
+    {
+        zMin = value;
+        LogDebug($"Z Min set to: {value:F3}");
+    }
+
+    /// <summary>
+    /// Z軸の最大値を設定（AutoHeightControllerから呼び出し用）
+    /// </summary>
+    public void SetZMax(float value)
+    {
+        zMax = value;
+        LogDebug($"Z Max set to: {value:F3}");
     }
 
     #endregion
