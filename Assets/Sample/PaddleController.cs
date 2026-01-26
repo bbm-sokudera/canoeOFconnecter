@@ -60,9 +60,9 @@ public class PaddleController : MonoBehaviour
         if (oscManager == null)
             return;
 
-        // ゲームモード(State=5)の時のみ動作
+        // チュートリアル(State=3)またはゲームモード(State=5)の時のみ動作
         int state = oscManager.GetInt("State");
-        if (state != 5)
+        if (state != 3 && state != 5)
             return;
 
         ProcessPaddleControl();
