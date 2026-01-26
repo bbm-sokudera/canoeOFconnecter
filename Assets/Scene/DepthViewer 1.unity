@@ -823,11 +823,12 @@ MonoBehaviour:
   choiceDisplayText: {fileID: 0}
   choiceDisplayTextTMP: {fileID: 0}
   xCenterPosition: 0
-  xMin: -1
-  xMax: 1
   confirmKey: 32
   autoSelectMode: 1
   autoSelectCooldown: 0.5
+  enableZAxisFilter: 1
+  zMin: 0.5
+  zMax: 2
   onQuizSelected:
     m_PersistentCalls:
       m_Calls: []
@@ -9763,7 +9764,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   receivePort: 7001
   receiveAddress: /box
-  transmitHost: 192.168.1.30
+  transmitHost: 127.0.0.1
   transmitPort: 8000
   transmitAddress: /paddle
   xCenterPosition: 0
