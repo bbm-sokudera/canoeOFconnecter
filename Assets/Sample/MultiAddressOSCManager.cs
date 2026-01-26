@@ -5,8 +5,13 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
+
 /// <summary>
 /// JSON設定ファイルで複数のOSCアドレスを管理する汎用OSCマネージャー
+/// インスペクターからの入力と送信テスト、Vector3の一括取得に対応
 /// </summary>
 public class MultiAddressOSCManager : MonoBehaviour
 {
@@ -19,11 +24,9 @@ public class MultiAddressOSCManager : MonoBehaviour
         public int index;            // OSCメッセージ内のインデックス
         public string type = "float"; // データ型（float, int, string）
 
-        [System.NonSerialized]
+        // インスペクターで直接入力・保存できるようにSerializedに変更
         public float floatValue;
-        [System.NonSerialized]
         public int intValue;
-        [System.NonSerialized]
         public string stringValue;
     }
 
@@ -67,13 +70,15 @@ public class MultiAddressOSCManager : MonoBehaviour
     [Tooltip("OSCメッセージを受信した時のイベント（アドレス名を渡す）")]
     public UnityEvent<string> onMessageReceived;
 
+    [SerializeField]
+    private OSCConfig _config;
+
     #endregion
 
     #region Private Variables
 
-    private Dictionary<int, OSCReceiver> _receivers = new Dictionary<int, OSCReceiver>(); // port → receiver
-    private Dictionary<string, OSCTransmitter> _transmitters = new Dictionary<string, OSCTransmitter>(); // "host:port" → transmitter
-    private OSCConfig _config;
+    private Dictionary<int, OSCReceiver> _receivers = new Dictionary<int, OSCReceiver>();
+    private Dictionary<string, OSCTransmitter> _transmitters = new Dictionary<string, OSCTransmitter>();
     private Dictionary<string, OSCParameter> _allParams = new Dictionary<string, OSCParameter>();
 
     #endregion
@@ -90,14 +95,12 @@ public class MultiAddressOSCManager : MonoBehaviour
     {
         foreach (var receiver in _receivers.Values)
         {
-            if (receiver != null)
-                receiver.Close();
+            if (receiver != null) receiver.Close();
         }
 
         foreach (var transmitter in _transmitters.Values)
         {
-            if (transmitter != null)
-                transmitter.Close();
+            if (transmitter != null) transmitter.Close();
         }
     }
 
@@ -105,9 +108,6 @@ public class MultiAddressOSCManager : MonoBehaviour
 
     #region Configuration Management
 
-    /// <summary>
-    /// JSON設定ファイルをロード
-    /// </summary>
     public void LoadConfiguration()
     {
         string filePath = Path.Combine(Application.streamingAssetsPath, configFilePath);
@@ -124,25 +124,9 @@ public class MultiAddressOSCManager : MonoBehaviour
         {
             string json = File.ReadAllText(filePath);
             _config = JsonUtility.FromJson<OSCConfig>(json);
+            RefreshParameterDictionary();
 
-            // パラメータを辞書に登録
-            _allParams.Clear();
-            foreach (var addr in _config.receive)
-            {
-                foreach (var param in addr.parameters)
-                {
-                    _allParams[param.name] = param;
-                }
-            }
-            foreach (var addr in _config.transmit)
-            {
-                foreach (var param in addr.parameters)
-                {
-                    _allParams[param.name] = param;
-                }
-            }
-
-            LogDebug($"Configuration loaded: {_config.receive.Count} receive addresses, {_config.transmit.Count} transmit addresses");
+            LogDebug($"Configuration loaded: {_config.receive.Count} receive, {_config.transmit.Count} transmit addresses");
         }
         catch (System.Exception e)
         {
@@ -151,114 +135,45 @@ public class MultiAddressOSCManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// デフォルト設定を作成
-    /// </summary>
+    private void RefreshParameterDictionary()
+    {
+        _allParams.Clear();
+        if (_config == null) return;
+
+        foreach (var addr in _config.receive)
+            foreach (var param in addr.parameters) _allParams[param.name] = param;
+        foreach (var addr in _config.transmit)
+            foreach (var param in addr.parameters) _allParams[param.name] = param;
+    }
+
     void CreateDefaultConfiguration()
     {
         _config = new OSCConfig();
 
-        // 受信アドレス: /state
-        var stateAddr = new OSCReceiveAddress
-        {
-            address = "/state",
-            port = 7001,
-            parameters = new List<OSCParameter>
-            {
-                new OSCParameter { name = "State", index = 0, type = "int" }
-            }
-        };
+        // デフォルト設定の構築
+        var stateAddr = new OSCReceiveAddress { address = "/state", port = 7001 };
+        stateAddr.parameters.Add(new OSCParameter { name = "State", index = 0, type = "int" });
         _config.receive.Add(stateAddr);
 
-        // 受信アドレス: /position
-        var posAddr = new OSCReceiveAddress
-        {
-            address = "/position",
-            port = 7001,
-            parameters = new List<OSCParameter>
-            {
-                new OSCParameter { name = "PositionX", index = 0, type = "float" },
-                new OSCParameter { name = "PositionY", index = 1, type = "float" },
-                new OSCParameter { name = "PositionZ", index = 2, type = "float" },
-                new OSCParameter { name = "VectorX", index = 3, type = "float" },
-                new OSCParameter { name = "VectorY", index = 4, type = "float" },
-                new OSCParameter { name = "VectorZ", index = 5, type = "float" },
-                new OSCParameter { name = "BoxX", index = 6, type = "float" },
-                new OSCParameter { name = "BoxY", index = 7, type = "float" },
-                new OSCParameter { name = "BoxZ", index = 8, type = "float" }
-            }
-        };
+        var posAddr = new OSCReceiveAddress { address = "/position", port = 7001 };
+        posAddr.parameters.Add(new OSCParameter { name = "PositionX", index = 0, type = "float" });
+        posAddr.parameters.Add(new OSCParameter { name = "PositionY", index = 1, type = "float" });
+        posAddr.parameters.Add(new OSCParameter { name = "PositionZ", index = 2, type = "float" });
         _config.receive.Add(posAddr);
 
-        // 送信アドレス: /quiz
-        var quizAddr = new OSCTransmitAddress
-        {
-            address = "/quiz",
-            host = "127.0.0.1",
-            port = 7002,
-            parameters = new List<OSCParameter>
-            {
-                new OSCParameter { name = "QuizChoice", index = 0, type = "int" }
-            }
-        };
-        _config.transmit.Add(quizAddr);
-
-        // 送信アドレス: /paddle
-        var paddleAddr = new OSCTransmitAddress
-        {
-            address = "/paddle",
-            host = "127.0.0.1",
-            port = 7002,
-            parameters = new List<OSCParameter>
-            {
-                new OSCParameter { name = "PaddleDirection", index = 0, type = "int" }
-            }
-        };
-        _config.transmit.Add(paddleAddr);
-
-        // 送信アドレス: /cropbox/autoheight
-        var cropboxAddr = new OSCTransmitAddress
-        {
-            address = "/cropbox/autoheight",
-            host = "127.0.0.1",
-            port = 7002,
-            parameters = new List<OSCParameter>
-            {
-                new OSCParameter { name = "AutoHeight", index = 0, type = "int" }
-            }
-        };
+        var cropboxAddr = new OSCTransmitAddress { address = "/cropbox/autoheight", host = "127.0.0.1", port = 8811 };
+        cropboxAddr.parameters.Add(new OSCParameter { name = "AutoHeight", index = 0, type = "int" });
+        cropboxAddr.parameters.Add(new OSCParameter { name = "SetHeightMargin", index = 1, type = "float" });
         _config.transmit.Add(cropboxAddr);
 
-        // パラメータ登録
-        _allParams.Clear();
-        foreach (var addr in _config.receive)
-        {
-            foreach (var param in addr.parameters)
-            {
-                _allParams[param.name] = param;
-            }
-        }
-        foreach (var addr in _config.transmit)
-        {
-            foreach (var param in addr.parameters)
-            {
-                _allParams[param.name] = param;
-            }
-        }
+        RefreshParameterDictionary();
     }
 
-    /// <summary>
-    /// 設定をJSONファイルに保存
-    /// </summary>
     public void SaveConfiguration()
     {
         string filePath = Path.Combine(Application.streamingAssetsPath, configFilePath);
         string directory = Path.GetDirectoryName(filePath);
-
-        if (!Directory.Exists(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
+        if (!Directory.Exists(directory)) Directory.CreateDirectory(directory);
 
         try
         {
@@ -274,236 +189,80 @@ public class MultiAddressOSCManager : MonoBehaviour
 
     #endregion
 
-    #region OSC Initialization
+    #region OSC Logic
 
-    /// <summary>
-    /// OSC受信機・送信機を初期化
-    /// </summary>
     void InitializeOSC()
     {
-        if (_config == null)
-        {
-            Debug.LogError("[MultiAddressOSCManager] Configuration is null.");
-            return;
-        }
+        if (_config == null) return;
 
-        // Receivers初期化（ポートごとに1つのReceiver）
         foreach (var addr in _config.receive)
         {
-            OSCReceiver receiver;
-
             if (!_receivers.ContainsKey(addr.port))
             {
-                receiver = gameObject.AddComponent<OSCReceiver>();
+                var receiver = gameObject.AddComponent<OSCReceiver>();
                 receiver.LocalPort = addr.port;
                 _receivers[addr.port] = receiver;
-                LogDebug($"OSC Receiver created on port {addr.port}");
             }
-            else
-            {
-                receiver = _receivers[addr.port];
-            }
-
-            // アドレスをバインド
-            receiver.Bind(addr.address, (msg) => OnOSCMessageReceived(addr.address, msg));
-            LogDebug($"Bound {addr.address} on port {addr.port}");
+            _receivers[addr.port].Bind(addr.address, (msg) => OnOSCMessageReceived(addr.address, msg));
         }
 
-        // Transmitter初期化（host:portごとに1つのTransmitter）
         foreach (var addr in _config.transmit)
         {
             string key = $"{addr.host}:{addr.port}";
-
             if (!_transmitters.ContainsKey(key))
             {
                 var transmitter = gameObject.AddComponent<OSCTransmitter>();
                 transmitter.RemoteHost = addr.host;
                 transmitter.RemotePort = addr.port;
                 _transmitters[key] = transmitter;
-                LogDebug($"OSC Transmitter created: {addr.host}:{addr.port}");
             }
         }
     }
 
-    #endregion
-
-    #region OSC Receive
-
-    /// <summary>
-    /// OSCメッセージ受信時のコールバック
-    /// </summary>
     void OnOSCMessageReceived(string address, OSCMessage message)
     {
         var addrConfig = _config.receive.FirstOrDefault(a => a.address == address);
-        if (addrConfig == null)
-            return;
+        if (addrConfig == null) return;
 
-        LogDebug($"Received OSC message on {address} with {message.Values.Count} values");
-
-        // 各パラメータの値を更新
         foreach (var param in addrConfig.parameters)
         {
-            if (param.index >= message.Values.Count)
-                continue;
-
-            switch (param.type.ToLower())
-            {
-                case "float":
-                    param.floatValue = message.Values[param.index].FloatValue;
-                    break;
-                case "int":
-                    param.intValue = message.Values[param.index].IntValue;
-                    break;
-                case "string":
-                    param.stringValue = message.Values[param.index].StringValue;
-                    break;
-            }
+            if (param.index >= message.Values.Count) continue;
+            var val = message.Values[param.index];
+            if (param.type.ToLower() == "float") param.floatValue = val.FloatValue;
+            else if (param.type.ToLower() == "int") param.intValue = val.IntValue;
+            else if (param.type.ToLower() == "string") param.stringValue = val.StringValue;
         }
-
-        // イベント発火
         onMessageReceived?.Invoke(address);
     }
 
-    #endregion
-
-    #region OSC Transmit
-
-    /// <summary>
-    /// 指定したアドレスにOSCメッセージを送信
-    /// </summary>
     public void SendMessage(string address)
     {
-        if (_config == null)
-            return;
-
+        if (_config == null) return;
         var addrConfig = _config.transmit.FirstOrDefault(a => a.address == address);
-        if (addrConfig == null)
-        {
-            Debug.LogWarning($"[MultiAddressOSCManager] Transmit address not found: {address}");
-            return;
-        }
+        if (addrConfig == null) return;
 
-        // 対応するTransmitterを取得
         string key = $"{addrConfig.host}:{addrConfig.port}";
-        if (!_transmitters.TryGetValue(key, out OSCTransmitter transmitter))
-        {
-            Debug.LogWarning($"[MultiAddressOSCManager] No transmitter found for {key}");
-            return;
-        }
+        if (!_transmitters.TryGetValue(key, out OSCTransmitter transmitter)) return;
 
         var message = new OSCMessage(address);
-
-        // パラメータをインデックス順にソート
-        var sortedParams = addrConfig.parameters.OrderBy(p => p.index).ToList();
-
-        foreach (var param in sortedParams)
+        foreach (var param in addrConfig.parameters.OrderBy(p => p.index))
         {
-            switch (param.type.ToLower())
-            {
-                case "float":
-                    message.AddValue(OSCValue.Float(param.floatValue));
-                    break;
-                case "int":
-                    message.AddValue(OSCValue.Int(param.intValue));
-                    break;
-                case "string":
-                    message.AddValue(OSCValue.String(param.stringValue));
-                    break;
-            }
+            if (param.type.ToLower() == "float") message.AddValue(OSCValue.Float(param.floatValue));
+            else if (param.type.ToLower() == "int") message.AddValue(OSCValue.Int(param.intValue));
+            else if (param.type.ToLower() == "string") message.AddValue(OSCValue.String(param.stringValue));
         }
-
         transmitter.Send(message);
-        LogDebug($"Sent OSC message to {address} on {key}");
     }
 
     #endregion
 
-    #region Public API
+    #region Public API (Getters/Setters)
 
-    /// <summary>
-    /// パラメータのFloat値を取得
-    /// </summary>
-    public float GetFloat(string paramName, float defaultValue = 0f)
-    {
-        if (_allParams.TryGetValue(paramName, out OSCParameter param))
-        {
-            return param.floatValue;
-        }
-        return defaultValue;
-    }
+    public float GetFloat(string paramName, float defaultValue = 0f) => _allParams.TryGetValue(paramName, out var p) ? p.floatValue : defaultValue;
+    public int GetInt(string paramName, int defaultValue = 0) => _allParams.TryGetValue(paramName, out var p) ? p.intValue : defaultValue;
+    public string GetString(string paramName, string defaultValue = "") => _allParams.TryGetValue(paramName, out var p) ? p.stringValue : defaultValue;
 
-    /// <summary>
-    /// パラメータのInt値を取得
-    /// </summary>
-    public int GetInt(string paramName, int defaultValue = 0)
-    {
-        if (_allParams.TryGetValue(paramName, out OSCParameter param))
-        {
-            return param.intValue;
-        }
-        return defaultValue;
-    }
-
-    /// <summary>
-    /// パラメータのString値を取得
-    /// </summary>
-    public string GetString(string paramName, string defaultValue = "")
-    {
-        if (_allParams.TryGetValue(paramName, out OSCParameter param))
-        {
-            return param.stringValue;
-        }
-        return defaultValue;
-    }
-
-    /// <summary>
-    /// パラメータのFloat値を設定
-    /// </summary>
-    public void SetFloat(string paramName, float value)
-    {
-        if (_allParams.TryGetValue(paramName, out OSCParameter param))
-        {
-            param.floatValue = value;
-        }
-        else
-        {
-            Debug.LogWarning($"[MultiAddressOSCManager] Parameter not found: {paramName}");
-        }
-    }
-
-    /// <summary>
-    /// パラメータのInt値を設定
-    /// </summary>
-    public void SetInt(string paramName, int value)
-    {
-        if (_allParams.TryGetValue(paramName, out OSCParameter param))
-        {
-            param.intValue = value;
-        }
-        else
-        {
-            Debug.LogWarning($"[MultiAddressOSCManager] Parameter not found: {paramName}");
-        }
-    }
-
-    /// <summary>
-    /// パラメータのString値を設定
-    /// </summary>
-    public void SetString(string paramName, string value)
-    {
-        if (_allParams.TryGetValue(paramName, out OSCParameter param))
-        {
-            param.stringValue = value;
-        }
-        else
-        {
-            Debug.LogWarning($"[MultiAddressOSCManager] Parameter not found: {paramName}");
-        }
-    }
-
-    /// <summary>
-    /// Vector3として取得
-    /// </summary>
+    // 今回不足していた GetVector3 を復活
     public Vector3 GetVector3(string xParamName, string yParamName, string zParamName)
     {
         return new Vector3(
@@ -513,25 +272,45 @@ public class MultiAddressOSCManager : MonoBehaviour
         );
     }
 
-    /// <summary>
-    /// 全設定を取得
-    /// </summary>
-    public OSCConfig GetConfig()
-    {
-        return _config;
-    }
+    public void SetFloat(string name, float v) { if (_allParams.TryGetValue(name, out var p)) p.floatValue = v; }
+    public void SetInt(string name, int v) { if (_allParams.TryGetValue(name, out var p)) p.intValue = v; }
+    public void SetString(string name, string v) { if (_allParams.TryGetValue(name, out var p)) p.stringValue = v; }
+
+    public OSCConfig GetConfig() => _config;
 
     #endregion
 
-    #region Debug
-
-    void LogDebug(string message)
-    {
-        if (enableDebugLog)
-        {
-            Debug.Log($"[MultiAddressOSCManager] {message}");
-        }
-    }
-
-    #endregion
+    void LogDebug(string message) { if (enableDebugLog) Debug.Log($"[MultiAddressOSCManager] {message}"); }
 }
+
+#region Editor Extension
+
+#if UNITY_EDITOR
+[CustomEditor(typeof(MultiAddressOSCManager))]
+public class MultiAddressOSCManagerEditor : Editor
+{
+    public override void OnInspectorGUI()
+    {
+        DrawDefaultInspector();
+        MultiAddressOSCManager manager = (MultiAddressOSCManager)target;
+        var config = manager.GetConfig();
+        if (config == null || config.transmit == null) return;
+
+        GUILayout.Space(15);
+        GUILayout.Label("Debug: Manual Transmission", EditorStyles.boldLabel);
+        GUI.backgroundColor = new Color(0.8f, 0.9f, 1f);
+        foreach (var addr in config.transmit)
+        {
+            EditorGUILayout.BeginHorizontal("box");
+            EditorGUILayout.LabelField(addr.address, EditorStyles.miniLabel, GUILayout.Width(120));
+            if (GUILayout.Button($"Send to {addr.port}")) manager.SendMessage(addr.address);
+            EditorGUILayout.EndHorizontal();
+        }
+        GUI.backgroundColor = Color.white;
+        GUILayout.Space(10);
+        if (GUILayout.Button("Save All Values to JSON", GUILayout.Height(30))) manager.SaveConfiguration();
+    }
+}
+#endif
+
+#endregion

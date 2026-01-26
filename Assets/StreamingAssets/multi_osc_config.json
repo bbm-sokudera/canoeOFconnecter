@@ -1,104 +1,152 @@
 {
-  "receive": [
-    {
-      "address": "/state",
-      "port": 7001,
-      "parameters": [
+    "receive": [
         {
-          "name": "State",
-          "index": 0,
-          "type": "int"
+            "address": "/state",
+            "host":"192.168.1.30",
+            "port": 9000,
+            "parameters": [
+                {
+                    "name": "State",
+                    "index": 0,
+                    "type": "int",
+                    "floatValue": 0.0,
+                    "intValue": 0,
+                    "stringValue": ""
+                }
+            ]
+        },
+        {
+            "address": "/position",
+            "port": 7001,
+            "parameters": [
+                {
+                    "name": "PositionX",
+                    "index": 0,
+                    "type": "float",
+                    "floatValue": 0.0,
+                    "intValue": 0,
+                    "stringValue": ""
+                },
+                {
+                    "name": "PositionY",
+                    "index": 1,
+                    "type": "float",
+                    "floatValue": 0.0,
+                    "intValue": 0,
+                    "stringValue": ""
+                },
+                {
+                    "name": "PositionZ",
+                    "index": 2,
+                    "type": "float",
+                    "floatValue": 0.0,
+                    "intValue": 0,
+                    "stringValue": ""
+                },
+                {
+                    "name": "VectorX",
+                    "index": 3,
+                    "type": "float",
+                    "floatValue": 0.0,
+                    "intValue": 0,
+                    "stringValue": ""
+                },
+                {
+                    "name": "VectorY",
+                    "index": 4,
+                    "type": "float",
+                    "floatValue": 0.0,
+                    "intValue": 0,
+                    "stringValue": ""
+                },
+                {
+                    "name": "VectorZ",
+                    "index": 5,
+                    "type": "float",
+                    "floatValue": 0.0,
+                    "intValue": 0,
+                    "stringValue": ""
+                },
+                {
+                    "name": "BoxX",
+                    "index": 6,
+                    "type": "float",
+                    "floatValue": 0.0,
+                    "intValue": 0,
+                    "stringValue": ""
+                },
+                {
+                    "name": "BoxY",
+                    "index": 7,
+                    "type": "float",
+                    "floatValue": 0.0,
+                    "intValue": 0,
+                    "stringValue": ""
+                },
+                {
+                    "name": "BoxZ",
+                    "index": 8,
+                    "type": "float",
+                    "floatValue": 0.0,
+                    "intValue": 0,
+                    "stringValue": ""
+                }
+            ]
         }
-      ]
-    },
-    {
-      "address": "/position",
-      "port": 7001,
-      "parameters": [
+    ],
+    "transmit": [
         {
-          "name": "PositionX",
-          "index": 0,
-          "type": "float"
+            "address": "/quiz",
+            "host": "192.168.1.15",
+            "port": 8000,
+            "parameters": [
+                {
+                    "name": "QuizChoice",
+                    "index": 0,
+                    "type": "int",
+                    "floatValue": 0.0,
+                    "intValue": 0,
+                    "stringValue": ""
+                }
+            ]
         },
         {
-          "name": "PositionY",
-          "index": 1,
-          "type": "float"
+            "address": "/paddle",
+            "host": "127.0.0.1",
+            "port": 8000,
+            "parameters": [
+                {
+                    "name": "PaddleDirection",
+                    "index": 0,
+                    "type": "int",
+                    "floatValue": 0.0,
+                    "intValue": 0,
+                    "stringValue": ""
+                }
+            ]
         },
         {
-          "name": "PositionZ",
-          "index": 2,
-          "type": "float"
-        },
-        {
-          "name": "VectorX",
-          "index": 3,
-          "type": "float"
-        },
-        {
-          "name": "VectorY",
-          "index": 4,
-          "type": "float"
-        },
-        {
-          "name": "VectorZ",
-          "index": 5,
-          "type": "float"
-        },
-        {
-          "name": "BoxX",
-          "index": 6,
-          "type": "float"
-        },
-        {
-          "name": "BoxY",
-          "index": 7,
-          "type": "float"
-        },
-        {
-          "name": "BoxZ",
-          "index": 8,
-          "type": "float"
+            "address": "/cropbox/autoheight",
+            "host": "127.0.0.1",
+            "port": 8811,
+            "parameters": [
+                {
+                    "name": "AutoHeight",
+                    "index": 0,
+                    "type": "int",
+                    "floatValue": 0.0,
+                    "intValue": 0,
+                    "stringValue": ""
+                },
+                {
+                    "name": "SetHeightMargin",
+                    "index": 1,
+                    "type": "float",
+                    "floatValue": 0.10000000149011612,
+                    "intValue": 0,
+                    "stringValue": ""
+                }
+            ]
         }
-      ]
-    }
-  ],
-  "transmit": [
-    {
-      "address": "/quiz",
-      "host": "127.0.0.1",
-      "port": 7002,
-      "parameters": [
-        {
-          "name": "QuizChoice",
-          "index": 0,
-          "type": "int"
-        }
-      ]
-    },
-    {
-      "address": "/paddle",
-      "host": "127.0.0.1",
-      "port": 7002,
-      "parameters": [
-        {
-          "name": "PaddleDirection",
-          "index": 0,
-          "type": "int"
-        }
-      ]
-    },
-    {
-      "address": "/cropbox/autoheight",
-      "host": "127.0.0.1",
-      "port": 7002,
-      "parameters": [
-        {
-          "name": "AutoHeight",
-          "index": 0,
-          "type": "int"
-        }
-      ]
-    }
-  ]
+    ]
 }
