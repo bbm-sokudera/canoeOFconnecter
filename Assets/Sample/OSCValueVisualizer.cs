@@ -3,12 +3,16 @@ using UnityEngine.UI;
 
 /// <summary>
 /// OSC送信値に反応してUI-Imageの色を変更するビジュアライザー
-/// OSCXPositionYVectorManagerのイベントに反応します
+/// PaddleControllerのイベントに反応します
 /// </summary>
 public class OSCValueVisualizer : MonoBehaviour
 {
-    [Header("Target Manager")]
-    [Tooltip("監視対象のOSCXPositionYVectorManager")]
+    [Header("Target Controller")]
+    [Tooltip("監視対象のPaddleController")]
+    public PaddleController paddleController;
+
+    [Header("(後方互換) 旧OSCXPositionYVectorManager")]
+    [Tooltip("旧式のOSCXPositionYVectorManager（PaddleControllerが未設定の場合に使用）")]
     public OSCXPositionYVectorManager targetManager;
 
     [Header("UI Images for Each Direction")]
@@ -60,20 +64,29 @@ public class OSCValueVisualizer : MonoBehaviour
         // 全てのImageを非アクティブ色に初期化
         ResetAllColors();
 
-        // OSCマネージャーのイベントに登録
-        if (targetManager != null)
+        // PaddleControllerのイベントに登録（優先）
+        if (paddleController != null)
+        {
+            paddleController.onPaddleSent.AddListener(OnOSCValueSent);
+        }
+        // 後方互換：旧OSCマネージャーのイベントに登録
+        else if (targetManager != null)
         {
             targetManager.onValueSent.AddListener(OnOSCValueSent);
         }
         else
         {
-            Debug.LogWarning("[OSCValueVisualizer] Target Manager is not assigned!");
+            Debug.LogWarning("[OSCValueVisualizer] PaddleController or Target Manager is not assigned!");
         }
     }
 
     void OnDestroy()
     {
         // イベントから登録解除
+        if (paddleController != null)
+        {
+            paddleController.onPaddleSent.RemoveListener(OnOSCValueSent);
+        }
         if (targetManager != null)
         {
             targetManager.onValueSent.RemoveListener(OnOSCValueSent);
@@ -127,6 +140,32 @@ public class OSCValueVisualizer : MonoBehaviour
     /// </summary>
     private void SetActiveColor(int value)
     {
+        // PaddleController使用時（値: 1=右前進, 2=左前進, 3=右後進, 4=左後進）
+        if (paddleController != null)
+        {
+            switch (value)
+            {
+                case 1: // 右前進
+                    if (rightImage != null)
+                        rightImage.color = rightActiveColor;
+                    break;
+                case 2: // 左前進
+                    if (leftImage != null)
+                        leftImage.color = leftActiveColor;
+                    break;
+                case 3: // 右後進
+                    if (rightBackwardImage != null)
+                        rightBackwardImage.color = rightBackwardActiveColor;
+                    break;
+                case 4: // 左後進
+                    if (leftBackwardImage != null)
+                        leftBackwardImage.color = leftBackwardActiveColor;
+                    break;
+            }
+            return;
+        }
+
+        // 後方互換：旧targetManager使用時
         if (targetManager == null)
             return;
 
@@ -162,10 +201,40 @@ public class OSCValueVisualizer : MonoBehaviour
     /// </summary>
     private void UpdateColorWithFade(int value, float alpha)
     {
+        Color activeColor = Color.white;
+
+        // PaddleController使用時（値: 1=右前進, 2=左前進, 3=右後進, 4=左後進）
+        if (paddleController != null)
+        {
+            switch (value)
+            {
+                case 1: // 右前進
+                    activeColor = rightActiveColor;
+                    if (rightImage != null)
+                        rightImage.color = Color.Lerp(inactiveColor, activeColor, alpha);
+                    break;
+                case 2: // 左前進
+                    activeColor = leftActiveColor;
+                    if (leftImage != null)
+                        leftImage.color = Color.Lerp(inactiveColor, activeColor, alpha);
+                    break;
+                case 3: // 右後進
+                    activeColor = rightBackwardActiveColor;
+                    if (rightBackwardImage != null)
+                        rightBackwardImage.color = Color.Lerp(inactiveColor, activeColor, alpha);
+                    break;
+                case 4: // 左後進
+                    activeColor = leftBackwardActiveColor;
+                    if (leftBackwardImage != null)
+                        leftBackwardImage.color = Color.Lerp(inactiveColor, activeColor, alpha);
+                    break;
+            }
+            return;
+        }
+
+        // 後方互換：旧targetManager使用時
         if (targetManager == null)
             return;
-
-        Color activeColor = Color.white;
 
         // 設定値と比較して対応するImageをフェード
         if (value == targetManager.rightValue)
