@@ -76,6 +76,12 @@ public class QuizController : MonoBehaviour
     [SerializeField] private bool _debugLeftZInRange;
     [SerializeField] private QuizChoice _debugCurrentChoice;
 
+    [Header("AutoHeight設定値 (実行中に確認)")]
+    [SerializeField, Tooltip("AutoHeightから設定されたZ最小値")]
+    private float _debugZMin;
+    [SerializeField, Tooltip("AutoHeightから設定されたZ最大値")]
+    private float _debugZMax;
+
     #endregion
 
     #region Private Variables
@@ -312,6 +318,7 @@ public class QuizController : MonoBehaviour
     public void SetZMin(float value)
     {
         zMin = value;
+        _debugZMin = value;
         LogDebug($"Z Min set to: {value:F3}");
     }
 
@@ -321,6 +328,7 @@ public class QuizController : MonoBehaviour
     public void SetZMax(float value)
     {
         zMax = value;
+        _debugZMax = value;
         LogDebug($"Z Max set to: {value:F3}");
     }
 

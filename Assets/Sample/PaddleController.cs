@@ -45,6 +45,12 @@ public class PaddleController : MonoBehaviour
     [Tooltip("デバッグログを出力する")]
     public bool enableDebugLog = true;
 
+    [Header("AutoHeight設定値 (実行中に確認)")]
+    [SerializeField, Tooltip("AutoHeightから設定されたZ最小値")]
+    private float _debugZMin;
+    [SerializeField, Tooltip("AutoHeightから設定されたZ最大値")]
+    private float _debugZMax;
+
     #endregion
 
     #region Private Variables
@@ -216,6 +222,7 @@ public class PaddleController : MonoBehaviour
     public void SetZMin(float value)
     {
         conditionalAxisMin = value;
+        _debugZMin = value;
         LogDebug($"Z Min set to: {value:F3}");
     }
 
@@ -225,6 +232,7 @@ public class PaddleController : MonoBehaviour
     public void SetZMax(float value)
     {
         conditionalAxisMax = value;
+        _debugZMax = value;
         LogDebug($"Z Max set to: {value:F3}");
     }
 
