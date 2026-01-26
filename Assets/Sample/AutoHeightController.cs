@@ -19,6 +19,13 @@ public class AutoHeightController : MonoBehaviour
     [Tooltip("計算結果の最小値（この値以下は全てこの値に固定）")]
     public float minResultFloor = 0.45f;
 
+    [Header("Recording Duration")]
+    [Tooltip("ONにすると指定秒数で自動終了、OFFならState=2を待つ")]
+    public bool useAutoDuration = false;
+
+    [Tooltip("計測時間（秒）")]
+    public float recordingDuration = 3.0f;
+
     [Header("Debug/Monitor (Values to Test)")]
     [SerializeField, Tooltip("計算された中央値")]
     private float lastMedianZ;
@@ -32,7 +39,9 @@ public class AutoHeightController : MonoBehaviour
     private bool _isRecording = false;
     private List<float> _zSamples = new List<float>();
     private float _delayTimer = 0f;
+    private float _recordingTimer = 0f;
     private int _lastState = -1;
+    private bool _autoFinished = false; // 自動終了済みフラグ
 
     #region Unity Editor Logic
     
@@ -89,26 +98,45 @@ public class AutoHeightController : MonoBehaviour
         {
             _isRecording = false;
             _delayTimer = startDelay;
+            _recordingTimer = 0f;
+            _autoFinished = false;
             _zSamples.Clear();
         }
         else if (newState == 2)
         {
-            if (_zSamples.Count > 0) ProcessResult();
+            // 自動終了していなければ手動終了
+            if (!_autoFinished && _zSamples.Count > 0) ProcessResult();
             _isRecording = false;
         }
     }
 
     private void HandleRecording()
     {
-        if (_lastState == 1 && !_isRecording)
+        // 開始待機中
+        if (_lastState == 1 && !_isRecording && !_autoFinished)
         {
             _delayTimer -= Time.deltaTime;
-            if (_delayTimer <= 0) _isRecording = true;
+            if (_delayTimer <= 0)
+            {
+                _isRecording = true;
+                _recordingTimer = 0f;
+            }
         }
 
+        // 記録中
         if (_isRecording)
         {
             _zSamples.Add(oscManager.GetFloat("PositionZ"));
+            _recordingTimer += Time.deltaTime;
+
+            // 自動終了チェック
+            if (useAutoDuration && _recordingTimer >= recordingDuration)
+            {
+                Debug.Log($"[AutoHeight] Auto-stop after {recordingDuration}s ({_zSamples.Count} samples)");
+                if (_zSamples.Count > 0) ProcessResult();
+                _isRecording = false;
+                _autoFinished = true;
+            }
         }
     }
 
