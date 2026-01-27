@@ -11,8 +11,8 @@ public class QuizController : MonoBehaviour
     public enum QuizChoice
     {
         None = 0,   // 選択していない
-        Right = 1,  // 右選択
-        Left = 2    // 左選択
+        Right = 2,  // 右選択
+        Left = 1    // 左選択
     }
 
     #endregion

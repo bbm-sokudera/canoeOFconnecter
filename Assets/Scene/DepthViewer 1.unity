@@ -2772,10 +2772,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   oscManager: {fileID: 1708375241}
-  vectorThreshold: 0.1
+  vectorThreshold: 0.25
   xCenterPosition: 0
-  cooldownTime: 0.3
-  enableConditionalAxis: 0
+  cooldownTime: 1
+  enableConditionalAxis: 1
   conditionalAxisMin: 0
   conditionalAxisMax: 2
   ignoreForwardBackward: 1
@@ -10086,9 +10086,9 @@ MonoBehaviour:
       port: 8811
       parameters:
       - name: 
-        index: 1
+        index: 0
         type: 
-        floatValue: 0.1
+        floatValue: 0
         intValue: 0
         stringValue: 
       - name: 
@@ -12272,11 +12272,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   oscManager: {fileID: 1708375241}
-  quizController: {fileID: 0}
-  paddleController: {fileID: 0}
+  quizController: {fileID: 100528119}
+  paddleController: {fileID: 526714797}
   startDelay: 0
   zOffset: 0
   minResultFloor: 0.45
+  maxResultCeiling: 0.88
   useAutoDuration: 0
   recordingDuration: 3
   lastMedianZ: 0
