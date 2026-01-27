@@ -19,6 +19,9 @@ public class AutoHeightController : MonoBehaviour
     [Tooltip("計算結果の最小値（この値以下は全てこの値に固定）")]
     public float minResultFloor = 0.45f;
 
+    [Tooltip("計算結果の最大値（この値以上は全てこの値に固定）")]
+    public float maxResultCeiling = 0.89f;
+
     [Header("Recording Duration")]
     [Tooltip("ONにすると指定秒数で自動終了、OFFならState=2を待つ")]
     public bool useAutoDuration = false;
@@ -150,10 +153,10 @@ public class AutoHeightController : MonoBehaviour
         // 小数点第3位を四捨五入（0.456 → 0.46）
         float rounded = Mathf.Round(rawResult * 100f) / 100f;
 
-        // 最小値以下は最小値に固定
-        lastCalculatedResult = Mathf.Max(rounded, minResultFloor);
+        // 最小値・最大値でクランプ
+        lastCalculatedResult = Mathf.Clamp(rounded, minResultFloor, maxResultCeiling);
 
-        Debug.Log($"[AutoHeight] Raw={rawResult:F3}, Rounded={rounded:F2}, Final={lastCalculatedResult:F2}");
+        Debug.Log($"[AutoHeight] Raw={rawResult:F3}, Rounded={rounded:F2}, Final={lastCalculatedResult:F2} (範囲: {minResultFloor:F2}~{maxResultCeiling:F2})");
 
         // 自動計算後もUIに反映
         ApplyValuesToControllers();
