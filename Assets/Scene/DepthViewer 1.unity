@@ -833,6 +833,18 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   enableDebugLog: 1
+  _debugState: 0
+  _debugIsQuizMode: 0
+  _debugPositionX: 0
+  _debugPositionZ: 0
+  _debugBoxZ: 0
+  _debugActualZ: 0
+  _debugZInRange: 0
+  _debugRightZInRange: 0
+  _debugLeftZInRange: 0
+  _debugCurrentChoice: 0
+  _debugZMin: 0
+  _debugZMax: 0
 --- !u!1 &104391089
 GameObject:
   m_ObjectHideFlags: 0
@@ -2624,9 +2636,9 @@ RectTransform:
   m_Father: {fileID: 1112192153}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 1, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: -11, y: 20}
+  m_SizeDelta: {x: 0, y: 20}
   m_Pivot: {x: 0, y: 0}
 --- !u!114 &490936796
 MonoBehaviour:
@@ -2767,10 +2779,13 @@ MonoBehaviour:
   conditionalAxisMin: 0
   conditionalAxisMax: 2
   ignoreForwardBackward: 1
+  invertLeftRight: 0
   onPaddleSent:
     m_PersistentCalls:
       m_Calls: []
   enableDebugLog: 1
+  _debugZMin: 0
+  _debugZMax: 0
 --- !u!1 &531560677
 GameObject:
   m_ObjectHideFlags: 0
@@ -4049,7 +4064,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &736136560
 RectTransform:
   m_ObjectHideFlags: 0
@@ -4480,7 +4495,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &811505629
 RectTransform:
   m_ObjectHideFlags: 0
@@ -5188,6 +5203,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f64868e38398d4c48b9561217c2ef244, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  paddleController: {fileID: 526714797}
   targetManager: {fileID: 1594698861}
   rightImage: {fileID: 1554725545}
   leftImage: {fileID: 1214508415}
@@ -5368,16 +5384,16 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 937344186}
-  m_LocalRotation: {x: -0, y: -0, z: -0.5735764, w: 0.8191521}
+  m_LocalRotation: {x: 0, y: 0, z: -0.5, w: 0.8660254}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 0.14000002, y: 0.14000002, z: 0.14}
   m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 2043828589}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: -70}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: -60}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 104.4, y: -79}
+  m_AnchoredPosition: {x: 111, y: -79}
   m_SizeDelta: {x: 1024, y: 904}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &937344188
@@ -5532,9 +5548,9 @@ RectTransform:
   m_Father: {fileID: 1112192153}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0}
-  m_AnchorMax: {x: 1, y: 1}
+  m_AnchorMax: {x: 1, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 14, y: -17}
+  m_SizeDelta: {x: 14, y: 0}
   m_Pivot: {x: 1, y: 1}
 --- !u!114 &982917449
 MonoBehaviour:
@@ -5656,7 +5672,7 @@ RectTransform:
   m_Father: {fileID: 154409797}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 1, y: 1}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 20, y: 20}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -6971,9 +6987,9 @@ RectTransform:
   m_Father: {fileID: 1112192153}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 1, y: 1}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: -11, y: -17}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1195571301
 MonoBehaviour:
@@ -7212,16 +7228,16 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1214508413}
-  m_LocalRotation: {x: -0, y: -0, z: 0.5735764, w: 0.8191521}
+  m_LocalRotation: {x: 0, y: 0, z: 0.5, w: 0.8660254}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 0.14000002, y: 0.14000002, z: 0.14}
   m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 2043828589}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 70}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 60}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 100.6, y: 120.8}
+  m_AnchoredPosition: {x: 110.6, y: 117}
   m_SizeDelta: {x: 1024, y: 904}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1214508415
@@ -8027,7 +8043,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: -110}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -86.6, y: -75}
+  m_AnchoredPosition: {x: -86.6, y: -79}
   m_SizeDelta: {x: 1024, y: 904}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1277436603
@@ -9292,7 +9308,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1532684738}
-  - component: {fileID: 1532684737}
   - component: {fileID: 1532684739}
   m_Layer: 0
   m_Name: UIManager
@@ -9301,57 +9316,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1532684737
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1532684736}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 786990dde2b28b04a9e1117fc2f9f61e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  config: {fileID: 0}
-  receivePortInput: {fileID: 0}
-  receiveAddressInput: {fileID: 0}
-  transmitHostInput: {fileID: 0}
-  transmitPortInput: {fileID: 0}
-  transmitAddressInput: {fileID: 0}
-  xCenterSlider: {fileID: 0}
-  xCenterText: {fileID: 0}
-  yVectorThresholdSlider: {fileID: 0}
-  yVectorThresholdText: {fileID: 0}
-  rightValueInput: {fileID: 0}
-  leftValueInput: {fileID: 0}
-  rightBackwardValueInput: {fileID: 0}
-  leftBackwardValueInput: {fileID: 0}
-  enableConditionalAxisToggle: {fileID: 0}
-  conditionalAxisMinSlider: {fileID: 0}
-  conditionalAxisMinText: {fileID: 0}
-  conditionalAxisMaxSlider: {fileID: 0}
-  conditionalAxisMaxText: {fileID: 0}
-  cooldownSlider: {fileID: 0}
-  cooldownText: {fileID: 0}
-  enableSideDetectionToggle: {fileID: 0}
-  sideLimitSlider: {fileID: 0}
-  sideLimitText: {fileID: 0}
-  oppositeRequiredSlider: {fileID: 0}
-  oppositeRequiredText: {fileID: 0}
-  enableBackwardDetectionToggle: {fileID: 0}
-  backwardLimitSlider: {fileID: 0}
-  backwardLimitText: {fileID: 0}
-  forwardRequiredSlider: {fileID: 0}
-  forwardRequiredText: {fileID: 0}
-  yAngleThresholdSlider: {fileID: 0}
-  yAngleThresholdText: {fileID: 0}
-  enableDebugLogToggle: {fileID: 0}
-  showGizmoToggle: {fileID: 0}
-  currentStatusText: {fileID: 0}
-  resetButton: {fileID: 0}
-  saveButton: {fileID: 0}
-  loadButton: {fileID: 0}
 --- !u!4 &1532684738
 Transform:
   m_ObjectHideFlags: 0
@@ -9583,7 +9547,7 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1554725543}
-  m_LocalRotation: {x: -0, y: -0, z: 0.81915206, w: 0.57357645}
+  m_LocalRotation: {x: 0, y: 0, z: 0.81915206, w: 0.57357645}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 0.14, y: 0.14, z: 0.14}
   m_ConstrainProportionsScale: 0
@@ -10802,7 +10766,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1878155059
 RectTransform:
   m_ObjectHideFlags: 0
@@ -12062,8 +12026,8 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1038430409}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0.45666665}
-  m_AnchorMax: {x: 1, y: 1}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 20, y: 20}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -12308,10 +12272,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   oscManager: {fileID: 1708375241}
-  zAxisController: {fileID: 531560679}
-  oscilloscope: {fileID: 1314314475}
+  quizController: {fileID: 0}
+  paddleController: {fileID: 0}
   startDelay: 0
   zOffset: 0
+  minResultFloor: 0.45
+  useAutoDuration: 0
+  recordingDuration: 3
   lastMedianZ: 0
   lastCalculatedResult: 0
   testMaxResult: 2
