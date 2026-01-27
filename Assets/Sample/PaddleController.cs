@@ -58,7 +58,9 @@ public class PaddleController : MonoBehaviour
 
     #region Private Variables
 
-    private float _lastSendTime = -999f;
+    // 左右別々のクールダウンタイマー
+    private float _lastRightSendTime = -999f;
+    private float _lastLeftSendTime = -999f;
 
     #endregion
 
@@ -114,21 +116,32 @@ public class PaddleController : MonoBehaviour
         // 左右判定
         bool isRight = position.x >= xCenterPosition;
 
+        // 左右別クールダウンチェック
+        if (isRight)
+        {
+            if (Time.time - _lastRightSendTime < cooldownTime)
+            {
+                LogDebug($"Right cooldown active. Skipping send.");
+                return;
+            }
+        }
+        else
+        {
+            if (Time.time - _lastLeftSendTime < cooldownTime)
+            {
+                LogDebug($"Left cooldown active. Skipping send.");
+                return;
+            }
+        }
+
         // 前後判定
         bool isForward = vectorY > 0;
 
         // パドル方向を決定
         int direction = DeterminePaddleDirection(isRight, isForward);
 
-        // クールダウンチェック
-        if (Time.time - _lastSendTime < cooldownTime)
-        {
-            LogDebug($"Cooldown active. Skipping send.");
-            return;
-        }
-
         // 送信
-        SendPaddleDirection(direction);
+        SendPaddleDirection(direction, isRight);
     }
 
     /// <summary>
@@ -164,14 +177,22 @@ public class PaddleController : MonoBehaviour
     /// <summary>
     /// パドル方向を送信
     /// </summary>
-    void SendPaddleDirection(int direction)
+    void SendPaddleDirection(int direction, bool isRight)
     {
         oscManager.SetInt("PaddleDirection", direction);
         oscManager.SendMessage("/paddle");
 
-        _lastSendTime = Time.time;
+        // 左右別々にクールダウンタイマーを更新
+        if (isRight)
+        {
+            _lastRightSendTime = Time.time;
+        }
+        else
+        {
+            _lastLeftSendTime = Time.time;
+        }
 
-        LogDebug($"Paddle sent: {direction} ({GetDirectionName(direction)})");
+        LogDebug($"Paddle sent: {direction} ({GetDirectionName(direction)}) - {(isRight ? "Right" : "Left")} side");
 
         // イベント発火
         onPaddleSent?.Invoke(direction);
