@@ -18,25 +18,15 @@ public class AppList {
 }
 
 public class AppLauncher : MonoBehaviour {
-    // --- Windows API ---
-    [DllImport("user32.dll")]
-    private static extern IntPtr GetActiveWindow();
-    [DllImport("user32.dll")]
-    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint uFlags);
-    [DllImport("user32.dll")]
-    private static extern bool SetForegroundWindow(IntPtr hWnd);
-    [DllImport("user32.dll")]
-    private static extern bool IsIconic(IntPtr hWnd);
-    [DllImport("user32.dll")]
-    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
-    [DllImport("user32.dll")]
-    private static extern IntPtr GetForegroundWindow();
-    [DllImport("user32.dll")]
-    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, IntPtr ProcessId);
-    [DllImport("user32.dll")]
-    private static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
-    [DllImport("user32.dll")]
-    private static extern short GetAsyncKeyState(int vKey);
+    [DllImport("user32.dll")] private static extern IntPtr GetActiveWindow();
+    [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint uFlags);
+    [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr hWnd);
+    [DllImport("user32.dll")] private static extern bool IsIconic(IntPtr hWnd);
+    [DllImport("user32.dll")] private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+    [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hWnd, IntPtr ProcessId);
+    [DllImport("user32.dll")] private static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
+    [DllImport("user32.dll")] private static extern short GetAsyncKeyState(int vKey);
 
     private static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
     private static readonly IntPtr HWND_NOTOPMOST = new IntPtr(-2);
@@ -44,11 +34,9 @@ public class AppLauncher : MonoBehaviour {
     private const uint SWP_NOMOVE = 0x0002;
     private const int SW_RESTORE = 9;
 
-    // キーコード定義
-    private const int VK_RETURN = 0x0D;    // Enter
-    private const int VK_NUMPAD_ENTER = 0x0D; // Windowsでは通常のEnterと同じ0x0Dで判定されることが多いですが、念のため
-    private const int VK_0 = 0x30;         // メインキーボードの0
-    private const int VK_NUM0 = 0x60;      // テンキーの0
+    private const int VK_RETURN = 0x0D;
+    private const int VK_0 = 0x30;
+    private const int VK_NUM0 = 0x60;
 
     [Header("Config設定")]
     public UnityEngine.Object configFile;
@@ -60,8 +48,6 @@ public class AppLauncher : MonoBehaviour {
     private string currentActiveProcessName;
     private IntPtr unityWindowHandle;
     private int selectedIndex = -1;
-
-    // 連打防止用
     private bool isEnterPressed = false;
 
     void Awake() {
@@ -74,31 +60,23 @@ public class AppLauncher : MonoBehaviour {
     }
 
     void Update() {
-        // --- 数字キーの判定 (メイン 0-9 & テンキー 0-9) ---
         for (int i = 0; i <= 9; i++) {
-            bool mainKey = (GetAsyncKeyState(VK_0 + i) & 0x8000) != 0;
-            bool numpadKey = (GetAsyncKeyState(VK_NUM0 + i) & 0x8000) != 0;
-
-            if (mainKey || numpadKey) {
+            if (((GetAsyncKeyState(VK_0 + i) & 0x8000) != 0) || ((GetAsyncKeyState(VK_NUM0 + i) & 0x8000) != 0)) {
                 if (selectedIndex != i) {
                     selectedIndex = i;
-                    UnityEngine.Debug.Log($"Selected Index: {selectedIndex}");
+                    UnityEngine.Debug.Log($"Index Selected: {selectedIndex}");
                 }
             }
         }
 
-        // --- Enterキー判定 (裏でも効く) ---
         bool enterDown = (GetAsyncKeyState(VK_RETURN) & 0x8000) != 0;
-        
         if (enterDown) {
-            if (!isEnterPressed) { // 押し下げられた瞬間だけ実行
+            if (!isEnterPressed) {
                 isEnterPressed = true;
-                if (selectedIndex != -1) {
-                    LaunchByIndex(selectedIndex);
-                }
+                if (selectedIndex != -1) LaunchByIndex(selectedIndex);
             }
         } else {
-            isEnterPressed = false; // 離されたらリセット
+            isEnterPressed = false;
         }
     }
 
@@ -106,8 +84,7 @@ public class AppLauncher : MonoBehaviour {
     public void LoadConfig() {
 #if UNITY_EDITOR
         string path = UnityEditor.AssetDatabase.GetAssetPath(configFile);
-        if(!string.IsNullOrEmpty(path))
-            path = Path.GetFullPath(Path.Combine(Application.dataPath, "..", path));
+        if(!string.IsNullOrEmpty(path)) path = Path.GetFullPath(Path.Combine(Application.dataPath, "..", path));
 #else
         string path = Path.Combine(Application.streamingAssetsPath, "apps_config.json");
 #endif
@@ -125,30 +102,23 @@ public class AppLauncher : MonoBehaviour {
 
     public void LaunchByIndex(int index) {
         if (index < 0 || index >= configData.apps.Count) return;
-
         string targetPath = configData.apps[index].path;
         currentActiveProcessName = Path.GetFileNameWithoutExtension(targetPath);
-        
         ExecuteLaunch(targetPath, currentActiveProcessName);
-
         if (monitorCoroutine != null) StopCoroutine(monitorCoroutine);
         monitorCoroutine = StartCoroutine(ForceFocusLoop());
     }
 
     private void ExecuteLaunch(string path, string procName) {
         Process[] running = Process.GetProcessesByName(procName);
-        if (running.Length > 0 && running[0].Responding) {
-            UnityEngine.Debug.Log($"{procName} is already running.");
-        } else {
-            if (running.Length > 0) running[0].Kill();
-            try {
-                Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true });
-            } catch (Exception e) {
-                UnityEngine.Debug.LogError($"Launch Error: {e.Message}");
-            }
+        if (running.Length > 0 && !running[0].Responding) running[0].Kill();
+        if (running.Length == 0 || !running[0].Responding) {
+            try { Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true }); }
+            catch (Exception e) { UnityEngine.Debug.LogError(e.Message); }
         }
     }
 
+    // ★ ここが最前面ループの心臓部
     IEnumerator ForceFocusLoop() {
         while (true) {
             yield return new WaitForSeconds(checkInterval);
@@ -157,9 +127,13 @@ public class AppLauncher : MonoBehaviour {
                 IntPtr targetHWnd = ps[0].MainWindowHandle;
                 if (targetHWnd == IntPtr.Zero) continue;
 
+                // 外部アプリがフォーカスを持っていないなら奪う
                 if (GetForegroundWindow() != targetHWnd) {
+                    // Unityを一旦下げて外部アプリを立て、即座にUnityを上に被せる
                     SetUnityAlwaysOnTop(false); 
                     ForceActivateWindow(targetHWnd);
+                    yield return null; 
+                    SetUnityAlwaysOnTop(true); // Unityを最前面に戻す
                 }
             }
         }
