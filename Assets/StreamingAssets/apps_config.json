@@ -1,0 +1,12 @@
+{
+  "apps": [
+    {
+      "name": "Femto Controller",
+      "path": "C:\\bbmedia\\FemtoController\\FemtoController.exe"
+    },
+    {
+      "name": "Unity App B",
+      "path": "C:\\Shortcuts\\Sample.lnk"
+    }
+  ]
+}
