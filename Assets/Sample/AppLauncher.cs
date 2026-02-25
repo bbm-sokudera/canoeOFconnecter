@@ -18,6 +18,7 @@ public class AppList {
 }
 
 public class AppLauncher : MonoBehaviour {
+    // --- Win32 API ---
     [DllImport("user32.dll")] private static extern IntPtr GetActiveWindow();
     [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint uFlags);
     [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr hWnd);
@@ -40,14 +41,16 @@ public class AppLauncher : MonoBehaviour {
 
     [Header("Config設定")]
     public UnityEngine.Object configFile;
-    public AppList configData;
+    public AppList configData = new AppList();
 
     [Header("監視・入力設定")]
     public float checkInterval = 3.0f;
     private Coroutine monitorCoroutine;
     private string currentActiveProcessName;
     private IntPtr unityWindowHandle;
+    
     private int selectedIndex = -1;
+    private bool isDeleteMode = false;
     private bool isEnterPressed = false;
 
     void Awake() {
@@ -60,22 +63,46 @@ public class AppLauncher : MonoBehaviour {
     }
 
     void Update() {
-        for (int i = 0; i <= 9; i++) {
-            if (((GetAsyncKeyState(VK_0 + i) & 0x8000) != 0) || ((GetAsyncKeyState(VK_NUM0 + i) & 0x8000) != 0)) {
+        // 1〜9 の入力を監視
+        for (int i = 1; i <= 9; i++) {
+            if (((GetAsyncKeyState(0x30 + i) & 0x8000) != 0) || ((GetAsyncKeyState(0x60 + i) & 0x8000) != 0)) {
                 if (selectedIndex != i) {
                     selectedIndex = i;
-                    UnityEngine.Debug.Log($"Index Selected: {selectedIndex}");
+                    isDeleteMode = false; // 新しい番号が選ばれたら削除モードをリセット
+                    UnityEngine.Debug.Log($"Selected App Index: {selectedIndex}");
                 }
             }
         }
 
-        bool enterDown = (GetAsyncKeyState(VK_RETURN) & 0x8000) != 0;
-        if (enterDown) {
-            if (!isEnterPressed) {
-                isEnterPressed = true;
-                if (selectedIndex != -1) LaunchByIndex(selectedIndex);
+        // 番号が選ばれている状態で「0」が押されたら削除フラグを立てる
+        if (selectedIndex != -1) {
+            if (((GetAsyncKeyState(VK_0) & 0x8000) != 0) || ((GetAsyncKeyState(VK_NUM0) & 0x8000) != 0)) {
+                if (!isDeleteMode) {
+                    isDeleteMode = true;
+                    UnityEngine.Debug.Log($"Delete Mode Active for App: {selectedIndex}");
+                }
             }
-        } else {
+        }
+
+        // Enterキー判定
+        bool enterDown = (GetAsyncKeyState(VK_RETURN) & 0x8000) != 0;
+        if (enterDown && !isEnterPressed) {
+            isEnterPressed = true;
+            if (selectedIndex != -1) {
+                // インデックスは1から始まる想定なので、リストの0番目に対応させるため -1 する
+                int targetIdx = selectedIndex - 1;
+
+                if (isDeleteMode) {
+                    CloseAppByIndex(targetIdx);
+                } else {
+                    LaunchByIndex(targetIdx);
+                }
+
+                // 実行後にリセット
+                selectedIndex = -1;
+                isDeleteMode = false;
+            }
+        } else if (!enterDown) {
             isEnterPressed = false;
         }
     }
@@ -91,6 +118,7 @@ public class AppLauncher : MonoBehaviour {
         if (File.Exists(path)) {
             string json = File.ReadAllText(path);
             JsonUtility.FromJsonOverwrite(json, configData);
+            UnityEngine.Debug.Log("Config Loaded.");
         }
     }
 
@@ -100,40 +128,79 @@ public class AppLauncher : MonoBehaviour {
         SetWindowPos(unityWindowHandle, order, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
     }
 
+    // --- 起動処理 ---
     public void LaunchByIndex(int index) {
         if (index < 0 || index >= configData.apps.Count) return;
+        
         string targetPath = configData.apps[index].path;
         currentActiveProcessName = Path.GetFileNameWithoutExtension(targetPath);
+        
+        UnityEngine.Debug.Log($"Launching: {currentActiveProcessName}");
         ExecuteLaunch(targetPath, currentActiveProcessName);
+        
         if (monitorCoroutine != null) StopCoroutine(monitorCoroutine);
         monitorCoroutine = StartCoroutine(ForceFocusLoop());
     }
 
     private void ExecuteLaunch(string path, string procName) {
         Process[] running = Process.GetProcessesByName(procName);
+        // 応答なしプロセスがあれば殺してから再起動
         if (running.Length > 0 && !running[0].Responding) running[0].Kill();
+        
         if (running.Length == 0 || !running[0].Responding) {
-            try { Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true }); }
-            catch (Exception e) { UnityEngine.Debug.LogError(e.Message); }
+            try { 
+                Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true }); 
+            }
+            catch (Exception e) { UnityEngine.Debug.LogError($"Launch Error: {e.Message}"); }
         }
     }
 
-    // ★ ここが最前面ループの心臓部
+    // --- 終了処理 ---
+    public void CloseAppByIndex(int index) {
+        if (index < 0 || index >= configData.apps.Count) return;
+
+        string targetPath = configData.apps[index].path;
+        string procName = Path.GetFileNameWithoutExtension(targetPath);
+        
+        Process[] running = Process.GetProcessesByName(procName);
+        if (running.Length == 0) {
+            UnityEngine.Debug.Log($"{procName} は起動していません。");
+            return;
+        }
+
+        foreach (Process p in running) {
+            try {
+                UnityEngine.Debug.Log($"Closing: {procName}");
+                p.CloseMainWindow(); // 優しく終了
+                if (!p.WaitForExit(2000)) p.Kill(); // 2秒待ってダメなら強制終了
+            } catch (Exception e) {
+                UnityEngine.Debug.LogError($"Close Error: {e.Message}");
+            }
+        }
+
+        // 監視中のアプリを消したなら監視を止める
+        if (currentActiveProcessName == procName && monitorCoroutine != null) {
+            StopCoroutine(monitorCoroutine);
+            monitorCoroutine = null;
+        }
+    }
+
+    // --- 監視ループ ---
     IEnumerator ForceFocusLoop() {
         while (true) {
             yield return new WaitForSeconds(checkInterval);
+            if (string.IsNullOrEmpty(currentActiveProcessName)) continue;
+
             Process[] ps = Process.GetProcessesByName(currentActiveProcessName);
             if (ps.Length > 0) {
                 IntPtr targetHWnd = ps[0].MainWindowHandle;
                 if (targetHWnd == IntPtr.Zero) continue;
 
-                // 外部アプリがフォーカスを持っていないなら奪う
                 if (GetForegroundWindow() != targetHWnd) {
-                    // Unityを一旦下げて外部アプリを立て、即座にUnityを上に被せる
                     SetUnityAlwaysOnTop(false); 
                     ForceActivateWindow(targetHWnd);
-                    yield return null; 
-                    SetUnityAlwaysOnTop(true); // Unityを最前面に戻す
+                    yield return new WaitForSeconds(0.1f); 
+                    SetUnityAlwaysOnTop(true);
                 }
             }
         }

@@ -6,7 +6,23 @@
     },
     {
       "name": "Unity App B",
+      "path": "C:\\Users\\Takikawa_canoe01\\Desktop\\00_Canoe\\canoe_camera\\camera.exe"
+    },
+    {
+      "name": "Camera App",
+      "path": "C:\\Users\\Takikawa_canoe01\\Desktop\\00_Canoe\\canoe_camera\\camera.exe"
+    },
+    {
+      "name": "Femto Controller",
+      "path": "C:\\bbmedia\\FemtoController\\FemtoController.exe"
+    },
+    {
+      "name": "Unity App B",
       "path": "C:\\Shortcuts\\Sample.lnk"
+    },
+    {
+      "name": "Camera App",
+      "path": "C:\\Users\\Takikawa_canoe01\\Desktop\\00_Canoe\\canoe_camera\\camera.exe"
     }
   ]
 }

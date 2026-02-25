@@ -2,7 +2,7 @@
     "receive": [
         {
             "address": "/state",
-            "host":"192.168.1.30",
+            "host":"127.0.0.1",
             "port": 9000,
             "parameters": [
                 {
@@ -143,6 +143,21 @@
                     "index": 1,
                     "type": "float",
                     "floatValue": 0.10000000149011612,
+                    "intValue": 0,
+                    "stringValue": ""
+                }
+            ]
+        },
+        {
+            "address": "/mode/set",
+            "host": "127.0.0.1",
+            "port": 8811,
+            "parameters": [
+                {
+                    "name": "ModeSelect",
+                    "index": 0,
+                    "type": "int",
+                    "floatValue": 0.0,
                     "intValue": 0,
                     "stringValue": ""
                 }
