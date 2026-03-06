@@ -162,6 +162,22 @@
                     "stringValue": ""
                 }
             ]
+        },
+        {
+            "address": "/cmd",
+            "host": "127.0.0.1",
+            "port": 8000,
+            "parameters": [
+                {
+                    "name": "command",
+                    "index": 0,
+                    "type": "int",
+                    "floatValue": 0.0,
+                    "intValue": 0,
+                    "stringValue": ""
+                }
+            ]
         }
+        
     ]
 }
