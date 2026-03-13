@@ -1,10 +1,9 @@
 using UnityEngine;
+using UnityEngine.UI; // Legacy Textを使う場合
+using TMPro;           // TextMeshProを使う場合
 using System.Collections.Generic;
 using System.Linq;
 
-/// <summary>
-/// 中央値計算を行い、Z軸コントローラーやオシロスコープと連動させるクラス
-/// </summary>
 public class AutoHeightController : MonoBehaviour
 {
     [Header("References")]
@@ -12,74 +11,56 @@ public class AutoHeightController : MonoBehaviour
     public QuizController quizController;
     public PaddleController paddleController;
 
+    [Header("UI Output")]
+    [Tooltip("TextMeshProを使用する場合")]
+    public TextMeshProUGUI medianTextMesh;
+    
+    [Tooltip("Legacy Text(旧テキスト)を使用する場合")]
+    public Text medianLegacyText;
+
     [Header("PositionZ Logic Settings")]
     public float startDelay = 0.5f;
     public float zOffset = 0.05f;
-
-    [Tooltip("計算結果の最小値（この値以下は全てこの値に固定）")]
     public float minResultFloor = 0.45f;
-
-    [Tooltip("計算結果の最大値（この値以上は全てこの値に固定）")]
     public float maxResultCeiling = 0.89f;
 
     [Header("Recording Duration")]
-    [Tooltip("ONにすると指定秒数で自動終了、OFFならState=2を待つ")]
     public bool useAutoDuration = false;
-
-    [Tooltip("計測時間（秒）")]
     public float recordingDuration = 3.0f;
 
-    [Header("Debug/Monitor (Values to Test)")]
-    [SerializeField, Tooltip("計算された中央値")]
-    private float lastMedianZ;
-    
-    [SerializeField, Tooltip("ここを書き換えると即座にMin(水色の帯の下端)が動きます")]
-    private float lastCalculatedResult;
-
-    [SerializeField, Tooltip("ここを書き換えると即座にMax(水色の帯の上端)が動きます")]
-    private float testMaxResult = 2.0f;
+    [Header("Debug/Monitor")]
+    [SerializeField] private float lastMedianZ;
+    [SerializeField] private float lastCalculatedResult;
+    [SerializeField] private float testMaxResult = 2.0f;
 
     private bool _isRecording = false;
     private List<float> _zSamples = new List<float>();
     private float _delayTimer = 0f;
     private float _recordingTimer = 0f;
     private int _lastState = -1;
-    private bool _autoFinished = false; // 自動終了済みフラグ
+    private bool _autoFinished = false;
 
-    #region Unity Editor Logic
-    
-    // インスペクターで値が変更されたときに自動で呼ばれる（再生中のみ反映）
     private void OnValidate()
     {
-        if (Application.isPlaying)
-        {
-            ApplyValuesToControllers();
-        }
+        if (Application.isPlaying) ApplyValuesToControllers();
     }
 
-    /// <summary>
-    /// 計算結果をQuizControllerとPaddleControllerに適用する
-    /// </summary>
-    [ContextMenu("Apply Inspector Values Now")]
     public void ApplyValuesToControllers()
     {
-        // QuizControllerに反映
         if (quizController != null)
         {
             quizController.SetZMin(lastCalculatedResult);
             quizController.SetZMax(testMaxResult);
         }
-
-        // PaddleControllerに反映
         if (paddleController != null)
         {
             paddleController.SetZMin(lastCalculatedResult);
             paddleController.SetZMax(testMaxResult);
         }
-
-        Debug.Log($"[AutoHeight] Applied to controllers: Min={lastCalculatedResult:F3}, Max={testMaxResult:F3}");
+        
+        // UI表示を更新
+        UpdateMedianUI();
     }
-    #endregion
 
     void Update()
     {
@@ -107,7 +88,6 @@ public class AutoHeightController : MonoBehaviour
         }
         else if (newState == 2)
         {
-            // 自動終了していなければ手動終了
             if (!_autoFinished && _zSamples.Count > 0) ProcessResult();
             _isRecording = false;
         }
@@ -115,7 +95,6 @@ public class AutoHeightController : MonoBehaviour
 
     private void HandleRecording()
     {
-        // 開始待機中
         if (_lastState == 1 && !_isRecording && !_autoFinished)
         {
             _delayTimer -= Time.deltaTime;
@@ -126,16 +105,13 @@ public class AutoHeightController : MonoBehaviour
             }
         }
 
-        // 記録中
         if (_isRecording)
         {
             _zSamples.Add(oscManager.GetFloat("PositionZ"));
             _recordingTimer += Time.deltaTime;
 
-            // 自動終了チェック
             if (useAutoDuration && _recordingTimer >= recordingDuration)
             {
-                Debug.Log($"[AutoHeight] Auto-stop after {recordingDuration}s ({_zSamples.Count} samples)");
                 if (_zSamples.Count > 0) ProcessResult();
                 _isRecording = false;
                 _autoFinished = true;
@@ -146,20 +122,29 @@ public class AutoHeightController : MonoBehaviour
     private void ProcessResult()
     {
         lastMedianZ = CalculateMedian(_zSamples);
-
-        // 中央値 + offset を計算
         float rawResult = lastMedianZ + zOffset;
-
-        // 小数点第3位を四捨五入（0.456 → 0.46）
         float rounded = Mathf.Round(rawResult * 100f) / 100f;
-
-        // 最小値・最大値でクランプ
         lastCalculatedResult = Mathf.Clamp(rounded, minResultFloor, maxResultCeiling);
 
-        Debug.Log($"[AutoHeight] Raw={rawResult:F3}, Rounded={rounded:F2}, Final={lastCalculatedResult:F2} (範囲: {minResultFloor:F2}~{maxResultCeiling:F2})");
-
-        // 自動計算後もUIに反映
         ApplyValuesToControllers();
+    }
+
+    // --- UI表示用のメソッドを追加 ---
+    private void UpdateMedianUI()
+    {
+        string displayText = $"{lastMedianZ:F3}";
+
+        // TextMeshProがセットされていれば反映
+        if (medianTextMesh != null)
+        {
+            medianTextMesh.text = displayText;
+        }
+
+        // Legacy Textがセットされていれば反映
+        if (medianLegacyText != null)
+        {
+            medianLegacyText.text = displayText;
+        }
     }
 
     private float CalculateMedian(List<float> list)
