@@ -135,10 +135,10 @@ public class PaddleController : MonoBehaviour
                 bool rightIsActive = (currentTime - _lastRightTimestamp) < handDataExpiry;
                 if (rightIsActive) {
                     if (_lastRightZ > actualZ) {
-                        LogDebug($"<color=yellow>[優先判定] 左右両方を検知：右が高い(Z:{_lastRightZ:F2})ため、左(Z:{actualZ:F2})を無視します</color>");
+                        LogDebug($"<color=cyan>[優先判定] 左右両方を検知：右が高い(Z:{_lastRightZ:F2})ため、左(Z:{actualZ:F2})を無視します</color>");
                         return;
                     } else {
-                        LogDebug($"<color=cyan>[優先判定] 左右両方を検知：左が高い(Z:{actualZ:F2})ため、左を優先します！</color>");
+                        LogDebug($"<color=yellow>[優先判定] 左右両方を検知：左が高い(Z:{actualZ:F2})ため、左を優先します！</color>");
                     }
                 }
             }
