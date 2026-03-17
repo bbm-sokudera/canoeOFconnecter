@@ -107,6 +107,7 @@ public class PaddleController : MonoBehaviour
         float actualZ = position.z + boxZ * 0.5f;
         float currentTime = Time.time;
         bool isRight = position.x >= xCenterPosition;
+        LogDebug($"<color=yellow>{position.x:F2})");
 
         // --- 高Z優先ロジックの判定 ---
         if (enableHighZPriority)
@@ -125,20 +126,20 @@ public class PaddleController : MonoBehaviour
                 bool leftIsActive = (currentTime - _lastLeftTimestamp) < handDataExpiry;
                 if (leftIsActive) {
                     if (_lastLeftZ > actualZ) {
-                        LogDebug($"<color=yellow>[優先判定] 左右両方を検知：左が高い(Z:{_lastLeftZ:F2})ため、右(Z:{actualZ:F2})を無視します</color>");
+                        //LogDebug($"<color=yellow>[優先判定] 左右両方を検知：左が高い(Z:{_lastLeftZ:F2})ため、右(Z:{actualZ:F2})を無視します</color>");
                         return;
                     } else {
-                        LogDebug($"<color=cyan>[優先判定] 左右両方を検知：右が高い(Z:{actualZ:F2})ため、右を優先します！</color>");
+                       // LogDebug($"<color=cyan>[優先判定] 左右両方を検知：右が高い(Z:{actualZ:F2})ため、右を優先します！</color>");
                     }
                 }
             } else {
                 bool rightIsActive = (currentTime - _lastRightTimestamp) < handDataExpiry;
                 if (rightIsActive) {
                     if (_lastRightZ > actualZ) {
-                        LogDebug($"<color=cyan>[優先判定] 左右両方を検知：右が高い(Z:{_lastRightZ:F2})ため、左(Z:{actualZ:F2})を無視します</color>");
+                       // LogDebug($"<color=cyan>[優先判定] 左右両方を検知：右が高い(Z:{_lastRightZ:F2})ため、左(Z:{actualZ:F2})を無視します</color>");
                         return;
                     } else {
-                        LogDebug($"<color=yellow>[優先判定] 左右両方を検知：左が高い(Z:{actualZ:F2})ため、左を優先します！</color>");
+                       // LogDebug($"<color=yellow>[優先判定] 左右両方を検知：左が高い(Z:{actualZ:F2})ため、左を優先します！</color>");
                     }
                 }
             }
