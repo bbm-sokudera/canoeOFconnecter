@@ -50,6 +50,14 @@ public class QuizController : MonoBehaviour
     [Tooltip("Z軸範囲フィルタを有効にする")]
     public bool enableZAxisFilter = true;
 
+    // --- Inspector Settings に追加 ---
+    [Header("Quiz Offset Settings")]
+    [Tooltip("AutoHeightからの結果に加算するクイズ専用のオフセット")]
+    public float quizZOffset = 0.0f; // インスペクターで調整可能
+
+    // --- 内部保持用の変数（追加） ---
+    private float _baseZMin = 0f;
+
     [Tooltip("Z軸の最小値（この値以上の時に有効）")]
     public float zMin = 0f;
 
@@ -315,11 +323,17 @@ public class QuizController : MonoBehaviour
     /// <summary>
     /// Z軸の最小値を設定（AutoHeightControllerから呼び出し用）
     /// </summary>
+    // --- SetZMin メソッドを修正 ---
     public void SetZMin(float value)
     {
-        zMin = value;
-        _debugZMin = value;
-        LogDebug($"Z Min set to: {value:F3}");
+        // 基準となる値を保持
+        _baseZMin = value;
+        
+        // 基準値 + クイズ専用オフセット を適用
+        zMin = _baseZMin + quizZOffset;
+        
+        _debugZMin = zMin;
+        LogDebug($"Z Min updated with quiz offset: {zMin:F3} (Base: {_baseZMin:F3} + Offset: {quizZOffset:F3})");
     }
 
     /// <summary>
