@@ -2979,6 +2979,8 @@ MonoBehaviour:
   conditionalAxisMax: 2
   ignoreForwardBackward: 1
   invertLeftRight: 0
+  enableHighZPriority: 1
+  handDataExpiry: 0.2
   onPaddleSent:
     m_PersistentCalls:
       m_Calls: []
@@ -13346,8 +13348,8 @@ MonoBehaviour:
   oscManager: {fileID: 1708375241}
   quizController: {fileID: 100528119}
   paddleController: {fileID: 526714797}
-  medianTextMesh: {fileID: 671453123}
-  medianLegacyText: {fileID: 0}
+  resultTextMesh: {fileID: 671453123}
+  resultLegacyText: {fileID: 0}
   startDelay: 0
   zOffset: 0
   minResultFloor: 0.45
