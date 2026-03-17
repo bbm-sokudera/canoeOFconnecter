@@ -3,7 +3,7 @@ using UnityEngine.Events;
 
 /// <summary>
 /// MultiAddressOSCManagerを使ったパドル操作コントローラー
-/// OSCXPositionYVectorManagerの機能を再実装
+/// 両手同時検知時の高Z優先ロジックを追加
 /// </summary>
 public class PaddleController : MonoBehaviour
 {
@@ -40,6 +40,13 @@ public class PaddleController : MonoBehaviour
     [Tooltip("左右を反転する（1↔2, 3↔4）")]
     public bool invertLeftRight = false;
 
+    [Header("High-Priority Dual Hand Logic")]
+    [Tooltip("両手が範囲内の時、より高い(Zが大きい)方を優先する（クイズモード以外で有効）")]
+    public bool enableHighZPriority = true;
+
+    [Tooltip("左右のデータを比較対象とする有効時間（秒）")]
+    public float handDataExpiry = 0.1f;
+
     [Header("Events")]
     [Tooltip("パドル操作を送信した時のイベント")]
     public UnityEvent<int> onPaddleSent;
@@ -61,6 +68,12 @@ public class PaddleController : MonoBehaviour
     // 左右別々のクールダウンタイマー
     private float _lastRightSendTime = -999f;
     private float _lastLeftSendTime = -999f;
+
+    // 高Z優先ロジック用の内部保持変数
+    private float _lastRightZ = -1f;
+    private float _lastLeftZ = -1f;
+    private float _lastRightTimestamp = -1f;
+    private float _lastLeftTimestamp = -1f;
 
     #endregion
 
@@ -95,6 +108,42 @@ public class PaddleController : MonoBehaviour
 
         // Z位置判定（ボックス上端）
         float actualZ = position.z + boxZ * 0.5f;
+        float currentTime = Time.time;
+        bool isRight = position.x >= xCenterPosition;
+
+        // --- 高Z優先ロジックの判定 ---
+        if (enableHighZPriority)
+        {
+            // 今回のデータを記録
+            if (isRight) {
+                _lastRightZ = actualZ;
+                _lastRightTimestamp = currentTime;
+            } else {
+                _lastLeftZ = actualZ;
+                _lastLeftTimestamp = currentTime;
+            }
+
+            // 反対側の手が有効時間内に存在するかチェック
+            if (isRight) {
+                bool leftIsActive = (currentTime - _lastLeftTimestamp) < handDataExpiry;
+                if (leftIsActive && _lastLeftZ > actualZ) {
+                    LogDebug($"[Priority] Right hand IGNORED. (Right Z:{actualZ:F3} < Left Z:{_lastLeftZ:F3})");
+                    return;
+                }
+                if (leftIsActive && _lastLeftZ <= actualZ) {
+                    LogDebug($"[Priority] Right hand SELECTED. (Right Z:{actualZ:F3} >= Left Z:{_lastLeftZ:F3})");
+                }
+            } else {
+                bool rightIsActive = (currentTime - _lastRightTimestamp) < handDataExpiry;
+                if (rightIsActive && _lastRightZ > actualZ) {
+                    LogDebug($"[Priority] Left hand IGNORED. (Left Z:{actualZ:F3} < Right Z:{_lastRightZ:F3})");
+                    return;
+                }
+                if (rightIsActive && _lastRightZ <= actualZ) {
+                    LogDebug($"[Priority] Left hand SELECTED. (Left Z:{actualZ:F3} >= Right Z:{_lastRightZ:F3})");
+                }
+            }
+        }
 
         // Z軸条件フィルタ
         if (enableConditionalAxis)
@@ -112,9 +161,6 @@ public class PaddleController : MonoBehaviour
             LogDebug($"VectorY={vectorY:F3} is below threshold {vectorThreshold:F3}. Skipping.");
             return;
         }
-
-        // 左右判定
-        bool isRight = position.x >= xCenterPosition;
 
         // 左右別クールダウンチェック
         if (isRight)
@@ -217,9 +263,6 @@ public class PaddleController : MonoBehaviour
 
     #region Public Methods
 
-    /// <summary>
-    /// 現在の位置を取得（ボックス上端のZ値）
-    /// </summary>
     public Vector3 GetCurrentPosition()
     {
         if (oscManager == null)
@@ -235,9 +278,6 @@ public class PaddleController : MonoBehaviour
         );
     }
 
-    /// <summary>
-    /// 現在のベクトルを取得
-    /// </summary>
     public Vector3 GetCurrentVector()
     {
         if (oscManager == null)
@@ -246,9 +286,6 @@ public class PaddleController : MonoBehaviour
         return oscManager.GetVector3("VectorX", "VectorY", "VectorZ");
     }
 
-    /// <summary>
-    /// Z軸の最小値を設定（AutoHeightControllerから呼び出し用）
-    /// </summary>
     public void SetZMin(float value)
     {
         conditionalAxisMin = value;
@@ -256,9 +293,6 @@ public class PaddleController : MonoBehaviour
         LogDebug($"Z Min set to: {value:F3}");
     }
 
-    /// <summary>
-    /// Z軸の最大値を設定（AutoHeightControllerから呼び出し用）
-    /// </summary>
     public void SetZMax(float value)
     {
         conditionalAxisMax = value;
