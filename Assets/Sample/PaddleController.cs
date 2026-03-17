@@ -3,7 +3,7 @@ using UnityEngine.Events;
 
 /// <summary>
 /// MultiAddressOSCManagerを使ったパドル操作コントローラー
-/// 両手同時検知時の高Z優先ロジックを追加
+/// 両手同時検知時の高Z優先ロジック（日本語ログ対応）を追加
 /// </summary>
 public class PaddleController : MonoBehaviour
 {
@@ -41,11 +41,11 @@ public class PaddleController : MonoBehaviour
     public bool invertLeftRight = false;
 
     [Header("High-Priority Dual Hand Logic")]
-    [Tooltip("両手が範囲内の時、より高い(Zが大きい)方を優先する（クイズモード以外で有効）")]
+    [Tooltip("両手が範囲内の時、より高い(Zが大きい)方を優先する")]
     public bool enableHighZPriority = true;
 
-    [Tooltip("左右のデータを比較対象とする有効時間（秒）")]
-    public float handDataExpiry = 0.1f;
+    [Tooltip("左右のデータを比較対象とする有効時間（秒）。SELECTEDが出ない場合はここを上げてください")]
+    public float handDataExpiry = 0.2f;
 
     [Header("Events")]
     [Tooltip("パドル操作を送信した時のイベント")]
@@ -84,7 +84,7 @@ public class PaddleController : MonoBehaviour
         if (oscManager == null)
             return;
 
-        // チュートリアル(State=3)またはゲームモード(State=5)の時のみ動作
+        // チュートリアル(3)またはゲーム(5)の時のみ動作
         int state = oscManager.GetInt("State");
         if (state != 3 && state != 5)
             return;
@@ -96,9 +96,6 @@ public class PaddleController : MonoBehaviour
 
     #region Paddle Control
 
-    /// <summary>
-    /// パドル操作の処理
-    /// </summary>
     void ProcessPaddleControl()
     {
         // 位置とベクトルを取得
@@ -123,24 +120,26 @@ public class PaddleController : MonoBehaviour
                 _lastLeftTimestamp = currentTime;
             }
 
-            // 反対側の手が有効時間内に存在するかチェック
+            // 反対側の手との比較
             if (isRight) {
                 bool leftIsActive = (currentTime - _lastLeftTimestamp) < handDataExpiry;
-                if (leftIsActive && _lastLeftZ > actualZ) {
-                    LogDebug($"[Priority] Right hand IGNORED. (Right Z:{actualZ:F3} < Left Z:{_lastLeftZ:F3})");
-                    return;
-                }
-                if (leftIsActive && _lastLeftZ <= actualZ) {
-                    LogDebug($"[Priority] Right hand SELECTED. (Right Z:{actualZ:F3} >= Left Z:{_lastLeftZ:F3})");
+                if (leftIsActive) {
+                    if (_lastLeftZ > actualZ) {
+                        LogDebug($"<color=yellow>[優先判定] 左右両方を検知：左が高い(Z:{_lastLeftZ:F2})ため、右(Z:{actualZ:F2})を無視します</color>");
+                        return;
+                    } else {
+                        LogDebug($"<color=cyan>[優先判定] 左右両方を検知：右が高い(Z:{actualZ:F2})ため、右を優先します！</color>");
+                    }
                 }
             } else {
                 bool rightIsActive = (currentTime - _lastRightTimestamp) < handDataExpiry;
-                if (rightIsActive && _lastRightZ > actualZ) {
-                    LogDebug($"[Priority] Left hand IGNORED. (Left Z:{actualZ:F3} < Right Z:{_lastRightZ:F3})");
-                    return;
-                }
-                if (rightIsActive && _lastRightZ <= actualZ) {
-                    LogDebug($"[Priority] Left hand SELECTED. (Left Z:{actualZ:F3} >= Right Z:{_lastRightZ:F3})");
+                if (rightIsActive) {
+                    if (_lastRightZ > actualZ) {
+                        LogDebug($"<color=yellow>[優先判定] 左右両方を検知：右が高い(Z:{_lastRightZ:F2})ため、左(Z:{actualZ:F2})を無視します</color>");
+                        return;
+                    } else {
+                        LogDebug($"<color=cyan>[優先判定] 左右両方を検知：左が高い(Z:{actualZ:F2})ため、左を優先します！</color>");
+                    }
                 }
             }
         }
@@ -150,7 +149,7 @@ public class PaddleController : MonoBehaviour
         {
             if (actualZ < conditionalAxisMin || actualZ > conditionalAxisMax)
             {
-                LogDebug($"Z={actualZ:F3} is out of range [{conditionalAxisMin:F3}, {conditionalAxisMax:F3}]. Skipping.");
+                LogDebug($"Z={actualZ:F3} は範囲外です [{conditionalAxisMin:F3}, {conditionalAxisMax:F3}]");
                 return;
             }
         }
@@ -158,95 +157,49 @@ public class PaddleController : MonoBehaviour
         // ベクトルの閾値チェック
         if (Mathf.Abs(vectorY) < vectorThreshold)
         {
-            LogDebug($"VectorY={vectorY:F3} is below threshold {vectorThreshold:F3}. Skipping.");
             return;
         }
 
         // 左右別クールダウンチェック
         if (isRight)
         {
-            if (Time.time - _lastRightSendTime < cooldownTime)
-            {
-                LogDebug($"Right cooldown active. Skipping send.");
-                return;
-            }
+            if (Time.time - _lastRightSendTime < cooldownTime) return;
         }
         else
         {
-            if (Time.time - _lastLeftSendTime < cooldownTime)
-            {
-                LogDebug($"Left cooldown active. Skipping send.");
-                return;
-            }
+            if (Time.time - _lastLeftSendTime < cooldownTime) return;
         }
 
-        // 前後判定
         bool isForward = vectorY > 0;
-
-        // パドル方向を決定
         int direction = DeterminePaddleDirection(isRight, isForward);
-
-        // 送信
         SendPaddleDirection(direction, isRight);
     }
 
-    /// <summary>
-    /// パドル方向を決定
-    /// </summary>
     int DeterminePaddleDirection(bool isRight, bool isForward)
     {
-        // 左右反転オプション
-        if (invertLeftRight)
-        {
-            isRight = !isRight;
-        }
+        if (invertLeftRight) isRight = !isRight; //
 
-        if (ignoreForwardBackward)
-        {
-            // 前後を無視（左右のみ）
-            return isRight ? 1 : 2; // 1:右前進, 2:左前進
-        }
-        else
-        {
-            // 前後を区別
-            if (isForward)
-            {
-                return isRight ? 1 : 2; // 1:右前進, 2:左前進
-            }
-            else
-            {
-                return isRight ? 3 : 4; // 3:右後進, 4:左後進
-            }
-        }
+        if (ignoreForwardBackward) return isRight ? 1 : 2; //
+        
+        if (isForward) return isRight ? 1 : 2; //
+        return isRight ? 3 : 4; //
     }
 
-    /// <summary>
-    /// パドル方向を送信
-    /// </summary>
     void SendPaddleDirection(int direction, bool isRight)
     {
-        oscManager.SetInt("PaddleDirection", direction);
-        oscManager.SendMessage("/paddle");
+        oscManager.SetInt("PaddleDirection", direction); //
+        oscManager.SendMessage("/paddle"); //
 
-        // 左右別々にクールダウンタイマーを更新
-        if (isRight)
-        {
-            _lastRightSendTime = Time.time;
-        }
-        else
-        {
-            _lastLeftSendTime = Time.time;
-        }
+        if (isRight) _lastRightSendTime = Time.time;
+        else _lastLeftSendTime = Time.time;
 
-        LogDebug($"Paddle sent: {direction} ({GetDirectionName(direction)}) - {(isRight ? "Right" : "Left")} side");
+        string side = isRight ? "【右】" : "【左】";
+        string dirName = GetDirectionName(direction);
+        LogDebug($"<color=white><b>[送信] {side} を送信しました！ (方向: {dirName})</b></color>");
 
-        // イベント発火
-        onPaddleSent?.Invoke(direction);
+        onPaddleSent?.Invoke(direction); //
     }
 
-    /// <summary>
-    /// 方向名を取得
-    /// </summary>
     string GetDirectionName(int direction)
     {
         switch (direction)
@@ -255,7 +208,7 @@ public class PaddleController : MonoBehaviour
             case 2: return "左前進";
             case 3: return "右後進";
             case 4: return "左後進";
-            default: return "Unknown";
+            default: return "不明";
         }
     }
 
@@ -263,54 +216,27 @@ public class PaddleController : MonoBehaviour
 
     #region Public Methods
 
-    public Vector3 GetCurrentPosition()
+    public Vector3 GetCurrentPosition() //
     {
-        if (oscManager == null)
-            return Vector3.zero;
-
+        if (oscManager == null) return Vector3.zero;
         Vector3 position = oscManager.GetVector3("PositionX", "PositionY", "PositionZ");
         float boxZ = oscManager.GetFloat("BoxZ");
-
-        return new Vector3(
-            position.x,
-            position.y,
-            position.z + boxZ * 0.5f
-        );
+        return new Vector3(position.x, position.y, position.z + boxZ * 0.5f);
     }
 
-    public Vector3 GetCurrentVector()
-    {
-        if (oscManager == null)
-            return Vector3.zero;
-
-        return oscManager.GetVector3("VectorX", "VectorY", "VectorZ");
-    }
-
-    public void SetZMin(float value)
+    public void SetZMin(float value) //
     {
         conditionalAxisMin = value;
         _debugZMin = value;
-        LogDebug($"Z Min set to: {value:F3}");
     }
 
-    public void SetZMax(float value)
+    public void SetZMax(float value) //
     {
         conditionalAxisMax = value;
         _debugZMax = value;
-        LogDebug($"Z Max set to: {value:F3}");
     }
 
     #endregion
 
-    #region Debug
-
-    void LogDebug(string message)
-    {
-        if (enableDebugLog)
-        {
-            Debug.Log($"[PaddleController] {message}");
-        }
-    }
-
-    #endregion
+    void LogDebug(string message) { if (enableDebugLog) Debug.Log($"[PaddleController] {message}"); }
 }
