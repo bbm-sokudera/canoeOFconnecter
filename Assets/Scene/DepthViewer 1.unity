@@ -769,28 +769,18 @@ MonoBehaviour:
   choiceDisplayText: {fileID: 0}
   choiceDisplayTextTMP: {fileID: 0}
   xCenterPosition: 0
-  confirmKey: 32
   autoSelectMode: 1
   autoSelectCooldown: 0.1
   enableZAxisFilter: 1
   zMin: 0.5
   zMax: 2
+  quizZOffset: 0.05
   onQuizSelected:
     m_PersistentCalls:
       m_Calls: []
-  enableDebugLog: 1
-  _debugState: 0
-  _debugIsQuizMode: 0
-  _debugPositionX: 0
-  _debugPositionZ: 0
-  _debugBoxZ: 0
-  _debugActualZ: 0
-  _debugZInRange: 0
-  _debugRightZInRange: 0
-  _debugLeftZInRange: 0
+  _baseZMin: 0
   _debugCurrentChoice: 0
-  _debugZMin: 0
-  _debugZMax: 0
+  enableDebugLog: 1
 --- !u!1 &110136323
 GameObject:
   m_ObjectHideFlags: 0
@@ -2971,7 +2961,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   oscManager: {fileID: 1708375241}
-  vectorThreshold: 0.5
+  vectorThreshold: 0.25
   xCenterPosition: 0
   cooldownTime: 0.6
   enableConditionalAxis: 1
@@ -2979,8 +2969,6 @@ MonoBehaviour:
   conditionalAxisMax: 2
   ignoreForwardBackward: 1
   invertLeftRight: 0
-  enableHighZPriority: 1
-  handDataExpiry: 0.5
   onPaddleSent:
     m_PersistentCalls:
       m_Calls: []
