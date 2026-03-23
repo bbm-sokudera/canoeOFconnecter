@@ -16,82 +16,26 @@
             ]
         },
         {
-            "address": "/box",
-            "port": 7001,
-            "parameters": [
-                {
-                    "name": "PositionX",
-                    "index": 0,
-                    "type": "float",
-                    "floatValue": 0.0,
-                    "intValue": 0,
-                    "stringValue": ""
-                },
-                {
-                    "name": "PositionY",
-                    "index": 1,
-                    "type": "float",
-                    "floatValue": 0.0,
-                    "intValue": 0,
-                    "stringValue": ""
-                },
-                {
-                    "name": "PositionZ",
-                    "index": 2,
-                    "type": "float",
-                    "floatValue": 0.0,
-                    "intValue": 0,
-                    "stringValue": ""
-                },
-                {
-                    "name": "VectorX",
-                    "index": 3,
-                    "type": "float",
-                    "floatValue": 0.0,
-                    "intValue": 0,
-                    "stringValue": ""
-                },
-                {
-                    "name": "VectorY",
-                    "index": 4,
-                    "type": "float",
-                    "floatValue": 0.0,
-                    "intValue": 0,
-                    "stringValue": ""
-                },
-                {
-                    "name": "VectorZ",
-                    "index": 5,
-                    "type": "float",
-                    "floatValue": 0.0,
-                    "intValue": 0,
-                    "stringValue": ""
-                },
-                {
-                    "name": "BoxX",
-                    "index": 6,
-                    "type": "float",
-                    "floatValue": 0.0,
-                    "intValue": 0,
-                    "stringValue": ""
-                },
-                {
-                    "name": "BoxY",
-                    "index": 7,
-                    "type": "float",
-                    "floatValue": 0.0,
-                    "intValue": 0,
-                    "stringValue": ""
-                },
-                {
-                    "name": "BoxZ",
-                    "index": 8,
-                    "type": "float",
-                    "floatValue": 0.0,
-                    "intValue": 0,
-                    "stringValue": ""
-                }
-            ]
+        "address": "/box",
+        "port": 7001,
+        "parameters": [
+            { "name": "Count", "index": 0, "type": "int" },
+            { "name": "ID1", "index": 1, "type": "int" },
+            { "name": "PositionX1", "index": 2, "type": "float" },
+            { "name": "PositionY1", "index": 3, "type": "float" },
+            { "name": "PositionZ1", "index": 4, "type": "float" },
+            { "name": "VectorX1", "index": 5, "type": "float" },
+            { "name": "VectorY1", "index": 6, "type": "float" },
+            { "name": "VectorZ1", "index": 7, "type": "float" },
+            { "name": "ID2", "index": 8, "type": "int" },
+            { "name": "PositionX2", "index": 9, "type": "float" },
+            { "name": "PositionY2", "index": 10, "type": "float" },
+            { "name": "PositionZ2", "index": 11, "type": "float" },
+            { "name": "VectorX2", "index": 12, "type": "float" },
+            { "name": "VectorY2", "index": 13, "type": "float" },
+            { "name": "VectorZ2", "index": 14, "type": "float" },
+            { "name": "BoxZ", "index": 15, "type": "float" }
+        ]
         }
     ],
     "transmit": [

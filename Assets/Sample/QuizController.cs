@@ -3,346 +3,161 @@ using UnityEngine.Events;
 
 /// <summary>
 /// クイズモードの選択を管理するコントローラー
+/// 同一フレーム内の複数データから最も高い(Z大)点を採用して判定する
 /// </summary>
 public class QuizController : MonoBehaviour
 {
     #region Quiz Choice Enum
-
-    public enum QuizChoice
-    {
-        None = 0,   // 選択していない
-        Right = 2,  // 右選択
-        Left = 1    // 左選択
-    }
-
+    public enum QuizChoice { None = 0, Right = 2, Left = 1 }
     #endregion
 
     #region Inspector Settings
-
     [Header("References")]
-    [Tooltip("MultiAddressOSCManager")]
     public MultiAddressOSCManager oscManager;
-
-    [Tooltip("StateController（クイズモード判定用）")]
     public StateController stateController;
 
     [Header("UI")]
-    [Tooltip("現在の選択を表示するText（UI.Text使用時）")]
     public UnityEngine.UI.Text choiceDisplayText;
-
-    [Tooltip("現在の選択を表示するText（TextMeshPro使用時）")]
     public TMPro.TextMeshProUGUI choiceDisplayTextTMP;
 
     [Header("Quiz Settings")]
-    [Tooltip("選択判定のX座標中心")]
     public float xCenterPosition = 0f;
-
-    [Tooltip("選択確定のキー（テスト用・自動モードOFFの時のみ）")]
-    public KeyCode confirmKey = KeyCode.Space;
-
-    [Tooltip("自動選択モード（位置で自動的に選択を送信）")]
     public bool autoSelectMode = true;
-
-    [Tooltip("自動選択のクールダウン時間（秒）")]
     public float autoSelectCooldown = 0.5f;
 
     [Header("Z-Axis Filter (AutoHeight)")]
-    [Tooltip("Z軸範囲フィルタを有効にする")]
     public bool enableZAxisFilter = true;
-
-    [Tooltip("Z軸の最小値（この値以上の時に有効）")]
-    public float zMin = 0f;
-
-    [Tooltip("Z軸の最大値（この値以下の時に有効）")]
+    public float zMin = 0f; // Base + Offset
     public float zMax = 2.0f;
 
+    [Header("Quiz Offset Settings")]
+    [Tooltip("AutoHeightからの基準値に加算するクイズ専用のオフセット")]
+    public float quizZOffset = 0.05f;
+
     [Header("Events")]
-    [Tooltip("選択を送信した時のイベント")]
     public UnityEvent<QuizChoice> onQuizSelected;
 
-    [Header("Debug")]
-    [Tooltip("デバッグログを出力する")]
-    public bool enableDebugLog = true;
-
-    [Header("Debug Monitor (実行中に確認)")]
-    [SerializeField] private int _debugState;
-    [SerializeField] private bool _debugIsQuizMode;
-    [SerializeField] private float _debugPositionX;
-    [SerializeField] private float _debugPositionZ;
-    [SerializeField] private float _debugBoxZ;
-    [SerializeField] private float _debugActualZ;
-    [SerializeField] private bool _debugZInRange;
-    [SerializeField] private bool _debugRightZInRange;
-    [SerializeField] private bool _debugLeftZInRange;
+    [Header("Debug Monitor")]
+    [SerializeField] private float _baseZMin;
     [SerializeField] private QuizChoice _debugCurrentChoice;
-
-    [Header("AutoHeight設定値 (実行中に確認)")]
-    [SerializeField, Tooltip("AutoHeightから設定されたZ最小値")]
-    private float _debugZMin;
-    [SerializeField, Tooltip("AutoHeightから設定されたZ最大値")]
-    private float _debugZMax;
-
+    public bool enableDebugLog = true;
     #endregion
-
-    #region Private Variables
 
     private float _lastSelectTime = -999f;
     private QuizChoice _currentChoice = QuizChoice.None;
 
-    // 左右それぞれのZ範囲状態を追跡
-    private bool _rightZInRange = false;
-    private bool _leftZInRange = false;
-
-    #endregion
-
-    #region Unity Lifecycle
-
     void Update()
     {
-        if (oscManager == null)
-            return;
-
-        // デバッグ: State値を取得
-        _debugState = oscManager.GetInt("State");
+        if (oscManager == null) return;
 
         // クイズモード(State=4)の時のみ動作
-        if (stateController != null && !stateController.IsState(StateController.GameState.Quiz))
-        {
-            _debugIsQuizMode = false;
-            return;
-        }
+        int currentState = oscManager.GetInt("State");
+        if (stateController != null && !stateController.IsState(StateController.GameState.Quiz)) return;
+        if (stateController == null && currentState != 4) return;
 
-        // State直接チェック（stateControllerがない場合）
-        if (stateController == null && _debugState != 4)
-        {
-            _debugIsQuizMode = false;
-            return;
-        }
-
-        _debugIsQuizMode = true;
-
-        // 現在の選択を更新
         UpdateCurrentChoice();
-
-        // UI更新
         UpdateChoiceDisplay();
 
-        // 自動選択モード
-        if (autoSelectMode)
-        {
-            HandleAutoSelect();
-        }
-        // 手動選択モード（確定キー）
-        else if (Input.GetKeyDown(confirmKey))
-        {
-            HandleManualSelect();
-        }
+        if (autoSelectMode) HandleAutoSelect();
     }
 
-    #endregion
-
-    #region Quiz Logic
-
     /// <summary>
-    /// 現在の選択を更新（左右交互データ対応・両方範囲外でNone）
+    /// 同一フレーム内のデータから「最も高い手」を選んで選択肢を決定
     /// </summary>
     void UpdateCurrentChoice()
     {
-        float posX = oscManager.GetFloat("PositionX");
-        float posZ = oscManager.GetFloat("PositionZ");
-        float boxZ = oscManager.GetFloat("BoxZ");
+        int count = oscManager.GetInt("Count");
 
-        // Z軸の実際の位置（ボックス上端）
-        float actualZ = posZ + boxZ * 0.5f;
-
-        // 今回のデータがZ範囲内かどうか
-        bool currentZInRange = !enableZAxisFilter || (actualZ >= zMin && actualZ <= zMax);
-
-        // X座標で左右を判定し、該当側のZ範囲状態を更新
-        bool isRight = posX >= xCenterPosition;
-        if (isRight)
+        // 3点以上のノイズ時は「選択なし」として安全側に倒す
+        if (count <= 0 || count > 2)
         {
-            _rightZInRange = currentZInRange;
-        }
-        else
-        {
-            _leftZInRange = currentZInRange;
-        }
-
-        // デバッグ値を更新
-        _debugPositionX = posX;
-        _debugPositionZ = posZ;
-        _debugBoxZ = boxZ;
-        _debugActualZ = actualZ;
-        _debugZInRange = currentZInRange;
-        _debugRightZInRange = _rightZInRange;
-        _debugLeftZInRange = _leftZInRange;
-
-        // 両方とも範囲外の場合のみNone
-        if (enableZAxisFilter && !_rightZInRange && !_leftZInRange)
-        {
-            _currentChoice = QuizChoice.None; // 0: 両方範囲外
-            _debugCurrentChoice = _currentChoice;
-            LogDebug($"Both sides out of Z range. Right:{_rightZInRange}, Left:{_leftZInRange}");
+            if (count > 2) LogDebug($"<color=orange>[制限] 検知数過多({count})のため無視します</color>");
+            _currentChoice = QuizChoice.None;
             return;
         }
 
-        // どちらか片方でも範囲内なら、範囲内の側を選択
-        if (_rightZInRange && !_leftZInRange)
+        float boxZ = oscManager.GetFloat("BoxZ");
+        float bestZ = -999f;
+        float bestX = 0f;
+        bool foundValid = false;
+
+        // 1点目と2点目を比較
+        for (int i = 1; i <= count; i++)
         {
-            _currentChoice = QuizChoice.Right; // 右のみ範囲内
+            string suffix = i.ToString();
+            float posX = oscManager.GetFloat("PositionX" + suffix);
+            float posZ = oscManager.GetFloat("PositionZ" + suffix);
+            float actualZ = posZ + boxZ * 0.5f;
+
+            // Z軸範囲フィルタ
+            bool zInRange = !enableZAxisFilter || (actualZ >= zMin && actualZ <= zMax);
+
+            if (zInRange)
+            {
+                // より高い(Zが大きい)方を採用
+                if (!foundValid || actualZ > bestZ)
+                {
+                    bestZ = actualZ;
+                    bestX = posX;
+                    foundValid = true;
+                }
+            }
         }
-        else if (!_rightZInRange && _leftZInRange)
+
+        if (!foundValid)
         {
-            _currentChoice = QuizChoice.Left; // 左のみ範囲内
+            _currentChoice = QuizChoice.None;
         }
         else
         {
-            // 両方範囲内の場合、今回のデータの側を選択
-            _currentChoice = isRight ? QuizChoice.Right : QuizChoice.Left;
+            // 最も高かった手のX座標で回答を決定
+            _currentChoice = (bestX >= xCenterPosition) ? QuizChoice.Right : QuizChoice.Left;
         }
 
         _debugCurrentChoice = _currentChoice;
     }
 
-    /// <summary>
-    /// 選択表示を更新
-    /// </summary>
     void UpdateChoiceDisplay()
     {
         string choiceName = GetChoiceName(_currentChoice);
-        string displayText = $"Quiz: {(int)_currentChoice} - {choiceName}";
+        string displayText = $"Quiz: {choiceName}\nThreshold: {zMin:F2} ({_baseZMin:F2} + {quizZOffset:F2})";
 
-        // UI.Text対応
-        if (choiceDisplayText != null)
-        {
-            choiceDisplayText.text = displayText;
-        }
-
-        // TextMeshPro対応
-        if (choiceDisplayTextTMP != null)
-        {
-            choiceDisplayTextTMP.text = displayText;
-        }
+        if (choiceDisplayText != null) choiceDisplayText.text = displayText;
+        if (choiceDisplayTextTMP != null) choiceDisplayTextTMP.text = displayText;
     }
 
-    /// <summary>
-    /// 選択の日本語名を取得
-    /// </summary>
     string GetChoiceName(QuizChoice choice)
     {
-        switch (choice)
-        {
-            case QuizChoice.None: return "選択していない";
+        switch (choice) {
+            case QuizChoice.None: return "選択なし";
             case QuizChoice.Right: return "右選択";
             case QuizChoice.Left: return "左選択";
-            default: return "Unknown";
+            default: return "不明";
         }
     }
 
-    /// <summary>
-    /// 自動選択処理（範囲外も含めて常に送信）
-    /// </summary>
     void HandleAutoSelect()
     {
-        // クールダウンチェック
-        if (Time.time - _lastSelectTime < autoSelectCooldown)
-            return;
-
-        // 現在の選択を送信（None=0も含む）
+        if (Time.time - _lastSelectTime < autoSelectCooldown) return;
         SendQuizChoice(_currentChoice);
     }
 
-    /// <summary>
-    /// 手動選択処理
-    /// </summary>
-    void HandleManualSelect()
-    {
-        if (_currentChoice == QuizChoice.None)
-            return;
-
-        // 選択を送信
-        SendQuizChoice(_currentChoice);
-    }
-
-    /// <summary>
-    /// クイズ選択を送信
-    /// </summary>
     void SendQuizChoice(QuizChoice choice)
     {
         oscManager.SetInt("QuizChoice", (int)choice);
         oscManager.SendMessage("/quiz");
-
         _lastSelectTime = Time.time;
-
-        LogDebug($"Quiz selected: {choice}");
-
-        // イベント発火
         onQuizSelected?.Invoke(choice);
     }
 
-    #endregion
-
-    #region Public Methods
-
-    /// <summary>
-    /// 現在の選択を取得
-    /// </summary>
-    public QuizChoice GetCurrentChoice()
-    {
-        return _currentChoice;
-    }
-
-    /// <summary>
-    /// 選択を強制送信（外部から呼び出し可能）
-    /// </summary>
-    public void ForceSelect(QuizChoice choice)
-    {
-        SendQuizChoice(choice);
-    }
-
-    /// <summary>
-    /// 現在の選択を送信
-    /// </summary>
-    public void ConfirmCurrentChoice()
-    {
-        if (_currentChoice != QuizChoice.None)
-        {
-            SendQuizChoice(_currentChoice);
-        }
-    }
-
-    /// <summary>
-    /// Z軸の最小値を設定（AutoHeightControllerから呼び出し用）
-    /// </summary>
     public void SetZMin(float value)
     {
-        zMin = value;
-        _debugZMin = value;
-        LogDebug($"Z Min set to: {value:F3}");
+        _baseZMin = value;
+        zMin = _baseZMin + quizZOffset;
+        LogDebug($"しきい値更新: {zMin:F3}");
     }
 
-    /// <summary>
-    /// Z軸の最大値を設定（AutoHeightControllerから呼び出し用）
-    /// </summary>
-    public void SetZMax(float value)
-    {
-        zMax = value;
-        _debugZMax = value;
-        LogDebug($"Z Max set to: {value:F3}");
-    }
+    public void SetZMax(float value) { zMax = value; }
 
-    #endregion
-
-    #region Debug
-
-    void LogDebug(string message)
-    {
-        if (enableDebugLog)
-        {
-            Debug.Log($"[QuizController] {message}");
-        }
-    }
-
-    #endregion
+    void LogDebug(string message) { if (enableDebugLog) Debug.Log($"[QuizController] {message}"); }
 }
