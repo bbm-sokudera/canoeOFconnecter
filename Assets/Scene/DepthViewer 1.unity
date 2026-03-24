@@ -769,6 +769,7 @@ MonoBehaviour:
   choiceDisplayText: {fileID: 0}
   choiceDisplayTextTMP: {fileID: 0}
   xCenterPosition: 0
+  confirmKey: 32
   autoSelectMode: 1
   autoSelectCooldown: 0.1
   enableZAxisFilter: 1
@@ -779,8 +780,12 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   enableDebugLog: 1
+  _debugState: 0
+  _debugIsQuizMode: 0
   _baseZMin: 0
-  _currentChoice: 0
+  _debugCurrentChoice: 0
+  _debugZMin: 0
+  _debugZMax: 0
 --- !u!1 &110136323
 GameObject:
   m_ObjectHideFlags: 0
@@ -13354,11 +13359,18 @@ MonoBehaviour:
   oscManager: {fileID: 1708375241}
   quizController: {fileID: 100528119}
   paddleController: {fileID: 526714797}
+  resultTextMesh: {fileID: 671453123}
+  resultLegacyText: {fileID: 0}
   startDelay: 0
   zOffset: 0
   minResultFloor: 0.45
   maxResultCeiling: 0.9
+  useAutoDuration: 0
   recordingDuration: 3
+  lastMedianZ: 0
+  lastCalculatedResult: 0
+  testMaxResult: 2
+  _validSampleCount: 0
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
