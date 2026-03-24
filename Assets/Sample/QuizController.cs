@@ -3,7 +3,7 @@ using UnityEngine.Events;
 
 /// <summary>
 /// クイズモードの選択を管理するコントローラー
-/// 同一フレームの一括OSCに対応し、フレームレート差による瞬断を防ぐ「遅延ゼロの非対称ロジック」を搭載
+/// センサーの完全ロスト(count=0)時も姿勢を維持し、確実な連続送信を実現する
 /// </summary>
 public class QuizController : MonoBehaviour
 {
@@ -44,8 +44,8 @@ public class QuizController : MonoBehaviour
     [Tooltip("自動選択モード（位置で自動的に選択を送信）")]
     public bool autoSelectMode = true;
 
-    [Tooltip("自動選択のクールダウン時間（秒）")]
-    public float autoSelectCooldown = 0.5f;
+    [Tooltip("自動選択のクールダウン時間（秒）。連続送信したい場合は0.05などに下げてください")]
+    public float autoSelectCooldown = 0.1f; // デフォルトを短めに変更しました
 
     [Header("Z-Axis Filter (AutoHeight)")]
     [Tooltip("Z軸範囲フィルタを有効にする")]
@@ -201,10 +201,10 @@ public class QuizController : MonoBehaviour
         else
         {
             // ラインを超えている手がない場合、0にするか維持するかを判定
-            if (count == 2 || count == 0)
+            if (count == 2)
             {
-                // 【即座にキャンセル】両手(2点)がしっかり見えていて両方ライン下の場合、
-                // または誰もいなくなった(0点)の場合 → 0(None)にする
+                // 【即座にキャンセル】両手(2点)がしっかり見えていて両方ライン下の場合のみ 0(None)にする
+                // ※count == 0(完全ロスト)の時は0にせず、前回の1や2を維持して耐えます！
                 _currentChoice = QuizChoice.None;
                 
                 // デバッグ表示リセット
@@ -213,9 +213,8 @@ public class QuizController : MonoBehaviour
             }
             else
             {
-                // 【維持】1点しか見えない場合
+                // 【維持】1点しか見えない、または0点(完全ロスト)の場合
                 // → センサーの瞬断や死角に入っただけとみなし、前回の選択(_currentChoice)を維持！
-                LogDebug("<color=yellow>トラッキング不安定(1点のみ)のため、リセット(0)を保留し前回の姿勢を維持します</color>");
             }
         }
 
@@ -248,6 +247,7 @@ public class QuizController : MonoBehaviour
 
     void HandleAutoSelect()
     {
+        // Cooldownの時間が過ぎていれば送信する（連続送信のキモ）
         if (Time.time - _lastSelectTime < autoSelectCooldown) return;
         SendQuizChoice(_currentChoice);
     }
