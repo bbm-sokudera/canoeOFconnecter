@@ -3,8 +3,7 @@ using UnityEngine.Events;
 
 /// <summary>
 /// クイズモードの選択を管理するコントローラー
-/// 同一フレーム内の複数データから最適な点を採用し、
-/// トラッキング不安定時の意図しないリセット(0)を防ぐ安全ロジックを搭載
+/// 同一フレームの一括OSCに対応し、フレームレート差による瞬断を防ぐ「遅延ゼロの非対称ロジック」を搭載
 /// </summary>
 public class QuizController : MonoBehaviour
 {
@@ -52,7 +51,7 @@ public class QuizController : MonoBehaviour
     [Tooltip("Z軸範囲フィルタを有効にする")]
     public bool enableZAxisFilter = true;
 
-    [Tooltip("Z軸の最小値（この値以上の時に有効。実際はBase+Offsetが適用される）")]
+    [Tooltip("Z軸の最小値（この値以上の時に有効。※実行時はBase+Offsetが適用される）")]
     public float zMin = 0f;
 
     [Tooltip("Z軸の最大値（この値以下の時に有効）")]
@@ -74,6 +73,8 @@ public class QuizController : MonoBehaviour
     [SerializeField] private int _debugState;
     [SerializeField] private bool _debugIsQuizMode;
     [SerializeField] private float _baseZMin; // AutoHeightから受け取った素の値
+    [SerializeField] private float _debugBestX; // 採用された手のX座標
+    [SerializeField] private float _debugBestZ; // 採用された手の実際のZ座標
     [SerializeField] private QuizChoice _debugCurrentChoice;
 
     [Header("AutoHeight設定値 (実行中に確認)")]
@@ -140,6 +141,7 @@ public class QuizController : MonoBehaviour
         if (Application.isPlaying)
         {
             zMin = _baseZMin + quizZOffset;
+            _debugZMin = zMin;
         }
     }
 #endif
@@ -149,25 +151,21 @@ public class QuizController : MonoBehaviour
     #region Quiz Logic
 
     /// <summary>
-    /// 現在の選択を更新
-    /// (0に戻る時のみ2点必須、または0点無人状態とする安全ロジック搭載)
+    /// 現在の選択を更新（遅延ゼロの非対称ロジック）
     /// </summary>
     void UpdateCurrentChoice()
     {
         int count = oscManager.GetInt("Count");
 
-        // 3点以上のノイズ時は計算をスキップし、前回の選択を維持
-        if (count > 2)
-        {
-            return;
-        }
+        // 3点以上はノイズとしてスキップ（前回の選択を維持）
+        if (count > 2) return;
 
         float boxZ = oscManager.GetFloat("BoxZ");
         float bestZ = -999f;
         float bestX = 0f;
         bool foundValid = false;
 
-        // 1点目または2点目をループで確認
+        // 1. まず「ラインを超えている有効な手」を探す
         for (int i = 1; i <= count; i++)
         {
             string suffix = i.ToString();
@@ -190,27 +188,37 @@ public class QuizController : MonoBehaviour
             }
         }
 
-        // 仮の選択肢を決定
-        QuizChoice tempChoice = QuizChoice.None;
+        // 2. 状態の決定（最善策コアロジック）
         if (foundValid)
         {
-            tempChoice = (bestX >= xCenterPosition) ? QuizChoice.Right : QuizChoice.Left;
+            // 【即座に選択】ラインを超えている手があれば、高い方で1か2を決定
+            _currentChoice = (bestX >= xCenterPosition) ? QuizChoice.Right : QuizChoice.Left;
+            
+            // デバッグ表示用
+            _debugBestX = bestX;
+            _debugBestZ = bestZ;
         }
-
-        // 【安全ロジック】None(0)への移行を厳格化
-        if (tempChoice == QuizChoice.None)
+        else
         {
-            // 2点(両手)じゃない、かつ、0点(誰もいない)でもない場合はスキップ
-            // つまり count == 1 でライン下の時など、不安定な状態は前回の選択を維持する
-            if (count != 2 && count != 0)
+            // ラインを超えている手がない場合、0にするか維持するかを判定
+            if (count == 2 || count == 0)
             {
-                LogDebug($"<color=yellow>トラッキング不安定({count}点)のため、リセット(0)を保留します</color>");
-                return; 
+                // 【即座にキャンセル】両手(2点)がしっかり見えていて両方ライン下の場合、
+                // または誰もいなくなった(0点)の場合 → 0(None)にする
+                _currentChoice = QuizChoice.None;
+                
+                // デバッグ表示リセット
+                _debugBestX = 0f;
+                _debugBestZ = 0f;
+            }
+            else
+            {
+                // 【維持】1点しか見えない場合
+                // → センサーの瞬断や死角に入っただけとみなし、前回の選択(_currentChoice)を維持！
+                LogDebug("<color=yellow>トラッキング不安定(1点のみ)のため、リセット(0)を保留し前回の姿勢を維持します</color>");
             }
         }
 
-        // 条件をクリアしたので選択を確定
-        _currentChoice = tempChoice;
         _debugCurrentChoice = _currentChoice;
     }
 
@@ -254,9 +262,10 @@ public class QuizController : MonoBehaviour
     {
         oscManager.SetInt("QuizChoice", (int)choice);
         oscManager.SendMessage("/quiz");
+
         _lastSelectTime = Time.time;
-        
-        LogDebug($"<color=cyan>Quiz selected: {choice}</color>");
+
+        LogDebug($"Quiz selected: {choice}");
         onQuizSelected?.Invoke(choice);
     }
 
@@ -264,13 +273,22 @@ public class QuizController : MonoBehaviour
 
     #region Public Methods
 
-    public QuizChoice GetCurrentChoice() { return _currentChoice; }
+    public QuizChoice GetCurrentChoice()
+    {
+        return _currentChoice;
+    }
 
-    public void ForceSelect(QuizChoice choice) { SendQuizChoice(choice); }
+    public void ForceSelect(QuizChoice choice)
+    {
+        SendQuizChoice(choice);
+    }
 
     public void ConfirmCurrentChoice()
     {
-        if (_currentChoice != QuizChoice.None) SendQuizChoice(_currentChoice);
+        if (_currentChoice != QuizChoice.None)
+        {
+            SendQuizChoice(_currentChoice);
+        }
     }
 
     public void SetZMin(float value)
@@ -290,6 +308,14 @@ public class QuizController : MonoBehaviour
     #endregion
 
     #region Debug
-    void LogDebug(string message) { if (enableDebugLog) Debug.Log($"[QuizController] {message}"); }
+
+    void LogDebug(string message)
+    {
+        if (enableDebugLog)
+        {
+            Debug.Log($"[QuizController] {message}");
+        }
+    }
+
     #endregion
 }
