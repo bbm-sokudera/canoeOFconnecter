@@ -3,7 +3,8 @@ using UnityEngine.Events;
 
 /// <summary>
 /// クイズモードの選択を管理するコントローラー
-/// 同一フレームで「2点ぴったり」検知された時のみ判定し、より高い(Z大)方を採用する
+/// 同一フレーム内の複数データから最適な点を採用し、
+/// トラッキング不安定時の意図しないリセット(0)を防ぐ安全ロジックを搭載
 /// </summary>
 public class QuizController : MonoBehaviour
 {
@@ -51,7 +52,7 @@ public class QuizController : MonoBehaviour
     [Tooltip("Z軸範囲フィルタを有効にする")]
     public bool enableZAxisFilter = true;
 
-    [Tooltip("Z軸の最小値（この値以上の時に有効。※実際はBase+Offsetが適用される）")]
+    [Tooltip("Z軸の最小値（この値以上の時に有効。実際はBase+Offsetが適用される）")]
     public float zMin = 0f;
 
     [Tooltip("Z軸の最大値（この値以下の時に有効）")]
@@ -148,42 +149,68 @@ public class QuizController : MonoBehaviour
     #region Quiz Logic
 
     /// <summary>
-    /// 現在の選択を更新（2点ぴったり検知フレームのみを採用）
+    /// 現在の選択を更新
+    /// (0に戻る時のみ2点必須、または0点無人状態とする安全ロジック搭載)
     /// </summary>
     void UpdateCurrentChoice()
     {
         int count = oscManager.GetInt("Count");
 
-        // 【重要】2点ぴったりの時以外は計算をスキップし、前回の選択を維持する
-        if (count != 2)
+        // 3点以上のノイズ時は計算をスキップし、前回の選択を維持
+        if (count > 2)
         {
             return;
         }
 
         float boxZ = oscManager.GetFloat("BoxZ");
+        float bestZ = -999f;
+        float bestX = 0f;
+        bool foundValid = false;
 
-        // 1点目と2点目のデータを取得
-        float z1 = oscManager.GetFloat("PositionZ1") + boxZ * 0.5f;
-        float z2 = oscManager.GetFloat("PositionZ2") + boxZ * 0.5f;
-        float x1 = oscManager.GetFloat("PositionX1");
-        float x2 = oscManager.GetFloat("PositionX2");
-
-        // 2点ともZ範囲内かチェック（厳密なフィルタ）
-        bool z1Valid = !enableZAxisFilter || (z1 >= zMin && z1 <= zMax);
-        bool z2Valid = !enableZAxisFilter || (z2 >= zMin && z2 <= zMax);
-
-        // 両手が範囲内になければ判定しない
-        if (!z1Valid || !z2Valid)
+        // 1点目または2点目をループで確認
+        for (int i = 1; i <= count; i++)
         {
-            _currentChoice = QuizChoice.None;
-            _debugCurrentChoice = _currentChoice;
-            return;
+            string suffix = i.ToString();
+            float posX = oscManager.GetFloat("PositionX" + suffix);
+            float posZ = oscManager.GetFloat("PositionZ" + suffix);
+            float actualZ = posZ + boxZ * 0.5f;
+
+            // Z軸範囲フィルタ
+            bool zInRange = !enableZAxisFilter || (actualZ >= zMin && actualZ <= zMax);
+
+            if (zInRange)
+            {
+                // 有効な点の中で最も高い(Z大)ものを記録
+                if (!foundValid || actualZ > bestZ)
+                {
+                    bestZ = actualZ;
+                    bestX = posX;
+                    foundValid = true;
+                }
+            }
         }
 
-        // 高い方(Zが大きい方)のX座標を採用して左右を決定
-        float bestX = (z1 > z2) ? x1 : x2;
-        _currentChoice = (bestX >= xCenterPosition) ? QuizChoice.Right : QuizChoice.Left;
+        // 仮の選択肢を決定
+        QuizChoice tempChoice = QuizChoice.None;
+        if (foundValid)
+        {
+            tempChoice = (bestX >= xCenterPosition) ? QuizChoice.Right : QuizChoice.Left;
+        }
 
+        // 【安全ロジック】None(0)への移行を厳格化
+        if (tempChoice == QuizChoice.None)
+        {
+            // 2点(両手)じゃない、かつ、0点(誰もいない)でもない場合はスキップ
+            // つまり count == 1 でライン下の時など、不安定な状態は前回の選択を維持する
+            if (count != 2 && count != 0)
+            {
+                LogDebug($"<color=yellow>トラッキング不安定({count}点)のため、リセット(0)を保留します</color>");
+                return; 
+            }
+        }
+
+        // 条件をクリアしたので選択を確定
+        _currentChoice = tempChoice;
         _debugCurrentChoice = _currentChoice;
     }
 
@@ -228,7 +255,8 @@ public class QuizController : MonoBehaviour
         oscManager.SetInt("QuizChoice", (int)choice);
         oscManager.SendMessage("/quiz");
         _lastSelectTime = Time.time;
-        LogDebug($"Quiz selected: {choice}");
+        
+        LogDebug($"<color=cyan>Quiz selected: {choice}</color>");
         onQuizSelected?.Invoke(choice);
     }
 
