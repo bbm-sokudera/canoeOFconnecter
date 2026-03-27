@@ -1,64 +1,56 @@
 using UnityEngine;
 using UnityEngine.Events;
+using System.Collections.Generic;
 
 /// <summary>
-/// 一括送信OSC形式に対応したパドルコントローラー
-/// 同一フレーム内の複数データから最適な1点を選出し、日本語ログで通知する
+/// 【最新最適解】Yベクトルの符号反転検知 ＆ X軸両端抽出による
+/// 超低遅延・高耐性パドルコントローラー
 /// </summary>
 public class PaddleController : MonoBehaviour
 {
     #region Inspector Settings
 
     [Header("References")]
-    [Tooltip("MultiAddressOSCManager")]
     public MultiAddressOSCManager oscManager;
 
-    [Header("Paddle Settings")]
-    [Tooltip("VectorYの最小閾値（この値以上で前後を判定）")]
-    public float vectorThreshold = 0.1f;
-
-    [Tooltip("X軸の中心位置（この値より右か左かで判定）")]
+    [Header("Paddle Settings (Y-Flip Logic)")]
+    [Tooltip("判定に使うX軸の中心位置")]
     public float xCenterPosition = 0f;
 
-    [Tooltip("送信のクールダウン時間（秒）")]
-    public float cooldownTime = 0.3f;
+    [Tooltip("左右個別の送信クールダウン（秒）※0で符号反転のみに依存")]
+    public float cooldownTime = 0.1f;
 
-    [Header("Z-Axis Conditional Filter")]
+    [Header("Z-Axis Filtering")]
     [Tooltip("Z軸条件フィルタを有効にする")]
-    public bool enableConditionalAxis = false;
+    public bool enableConditionalAxis = true;
 
-    [Tooltip("Z軸の最小値（この値以上の時に反応）")]
+    [Tooltip("Z軸の最小値（AutoHeightから上書きされる）")]
     public float conditionalAxisMin = 0f;
 
-    [Tooltip("Z軸の最大値（この値以下の時に反応）")]
+    [Tooltip("Z軸の最大値（この高さ以上は動作を無視）")]
     public float conditionalAxisMax = 2.0f;
 
     [Header("Mode Settings")]
-    [Tooltip("前後の方向を無視する")]
-    public bool ignoreForwardBackward = true;
-
     [Tooltip("左右を反転する（1↔2, 3↔4）")]
     public bool invertLeftRight = false;
 
     [Header("Events")]
-    [Tooltip("パドル操作を送信した時のイベント")]
     public UnityEvent<int> onPaddleSent;
 
     [Header("Debug")]
-    [Tooltip("デバッグログを出力する")]
     public bool enableDebugLog = true;
-
-    [Header("AutoHeight設定値 (実行中に確認)")]
-    [SerializeField, Tooltip("AutoHeightから設定されたZ最小値")]
-    private float _debugZMin;
-    [SerializeField, Tooltip("AutoHeightから設定されたZ最大値")]
-    private float _debugZMax;
+    [SerializeField] private float _debugZMin;
+    [SerializeField] private float _debugZMax;
 
     #endregion
 
     #region Private Variables
 
-    private float _lastSendTime = -999f;
+    // 左右独立した符号管理とタイマー
+    private float _prevRightY = 0f;
+    private float _prevLeftY = 0f;
+    private float _rightCooldownTimer = 0f;
+    private float _leftCooldownTimer = 0f;
 
     #endregion
 
@@ -66,108 +58,121 @@ public class PaddleController : MonoBehaviour
 
     void Update()
     {
-        if (oscManager == null)
-            return;
+        if (oscManager == null) return;
 
-        // チュートリアル(3)またはゲーム(5)の時のみ動作
         int state = oscManager.GetInt("State");
-        if (state != 3 && state != 5)
-            return;
+        if (state != 3 && state != 5) return;
 
         ProcessPaddleControl();
+        UpdateTimers();
+    }
+
+    private void UpdateTimers()
+    {
+        if (_rightCooldownTimer > 0) _rightCooldownTimer -= Time.deltaTime;
+        if (_leftCooldownTimer > 0) _leftCooldownTimer -= Time.deltaTime;
     }
 
     #endregion
 
-    #region Paddle Control
+    #region Core Paddle Logic
 
     void ProcessPaddleControl()
     {
-        // 1. 同一フレーム内の検知数を取得
         int count = oscManager.GetInt("Count");
+        if (count <= 0) return;
 
-        // 【懸念対策】2点以下のみ検知。3点以上はノイズとして無視
-        if (count <= 0 || count > 2)
+        // 1. 全点群からX軸の「一番左」と「一番右」の2点を抽出（内側のノイズを排除）
+        HandData leftEnd = GetExtremeXPoint(count, true);  // Min X
+        HandData rightEnd = GetExtremeXPoint(count, false); // Max X
+
+        // 2. 抽出した2点のうち「より高い点（手元）」をアクション対象として選別
+        HandData targetPoint = SelectHigherTarget(leftEnd, rightEnd);
+
+        if (!targetPoint.isValid) return;
+
+        // 3. 左右どちらのパドル領域か判定
+        bool isRightSide = targetPoint.posX >= xCenterPosition;
+
+        // 4. 左右独立した符号反転判定と送信
+        if (isRightSide)
         {
-            if (count > 2) LogDebug($"<color=orange>[制限] 検知数過多({count})のため、ノイズとして無視します</color>");
-            return;
+            CheckFlipAndSend(ref _prevRightY, ref _rightCooldownTimer, targetPoint.vecY, true);
         }
-
-        // 2. 1点目と2点目のデータを取得し、有効な（Z範囲内の）ものを選別
-        HandData bestHand = GetBestHandInFrame(count);
-
-        // 有効な手が1つもなければ終了
-        if (!bestHand.isValid) return;
-
-        // 3. ベクトルの閾値チェック
-        if (Mathf.Abs(bestHand.vecY) < vectorThreshold)
-            return;
-
-        // 4. クールダウンチェック
-        if (Time.time - _lastSendTime < cooldownTime)
-            return;
-
-        // 5. 送信処理へ
-        bool isRight = bestHand.posX >= xCenterPosition;
-        bool isForward = bestHand.vecY > 0;
-        int direction = DeterminePaddleDirection(isRight, isForward);
-        
-        SendPaddleDirection(direction, isRight);
+        else
+        {
+            CheckFlipAndSend(ref _prevLeftY, ref _leftCooldownTimer, targetPoint.vecY, false);
+        }
     }
 
     /// <summary>
-    /// 同一フレーム内のデータから、Z軸範囲内で最もZが高い1点を選び出す
+    /// Yベクトルの「負（戻し）」から「正（押し出し）」への切り替わりを最速検知
     /// </summary>
-    HandData GetBestHandInFrame(int count)
+    void CheckFlipAndSend(ref float prevY, ref float cooldown, float currentY, bool isRight)
     {
-        HandData best = new HandData { isValid = false, posZ = -999f };
+        // 条件: クールダウン中ではなく、前回がマイナスで、今回がプラスになった瞬間
+        if (cooldown <= 0 && prevY < 0 && currentY > 0)
+        {
+            int direction = DetermineDirection(isRight);
+            SendPaddleDirection(direction, isRight);
+            cooldown = cooldownTime; // 送信後にその側の窓口を閉鎖
+        }
+        
+        prevY = currentY; // 前回の符号を更新
+    }
+
+    /// <summary>
+    /// 全データの中からX座標が最小(Min)または最大(Max)の点を抽出する
+    /// </summary>
+    HandData GetExtremeXPoint(int count, bool findMin)
+    {
+        HandData extreme = new HandData { isValid = false, posX = findMin ? 999f : -999f };
         float boxZ = oscManager.GetFloat("BoxZ");
 
-        // 2点（まで）をループで確認
         for (int i = 1; i <= count; i++)
         {
-            // パラメータ名が ID1, PositionX1... となっている想定
-            string suffix = i.ToString();
-            float posX = oscManager.GetFloat("PositionX" + suffix);
-            float posZ = oscManager.GetFloat("PositionZ" + suffix);
-            float vecY = oscManager.GetFloat("VectorY" + suffix);
-            float actualZ = posZ + boxZ * 0.5f;
+            string s = i.ToString();
+            float px = oscManager.GetFloat("PositionX" + s);
+            float pz = oscManager.GetFloat("PositionZ" + s) + (boxZ * 0.5f);
+            float vy = oscManager.GetFloat("VectorY" + s);
 
-            // Z軸条件フィルタ
-            bool zInRange = !enableConditionalAxis || (actualZ >= conditionalAxisMin && actualZ <= conditionalAxisMax);
+            // Z高度制限内かチェック
+            if (pz < conditionalAxisMin || pz > conditionalAxisMax) continue;
 
-            if (zInRange)
+            if (findMin)
             {
-                // 今持っている候補よりZが高い、もしくは最初の1点目なら更新
-                if (!best.isValid || actualZ > best.posZ)
-                {
-                    if (best.isValid && count == 2)
-                    {
-                        LogDebug($"<color=cyan>[優先判定] 左右両方を検知：Zが高い方(Z:{actualZ:F2})を優先します</color>");
-                    }
-
-                    best.isValid = true;
-                    best.posX = posX;
-                    best.posZ = actualZ;
-                    best.vecY = vecY;
-                    best.idSuffix = suffix;
-                }
+                if (px < extreme.posX) { SetData(ref extreme, px, pz, vy, s); }
             }
             else
             {
-                LogDebug($"点{suffix}(Z:{actualZ:F2}) は範囲外のため無視");
+                if (px > extreme.posX) { SetData(ref extreme, px, pz, vy, s); }
             }
         }
-
-        return best;
+        return extreme;
     }
 
-    int DeterminePaddleDirection(bool isRight, bool isForward)
+    void SetData(ref HandData data, float x, float z, float vy, string id)
+    {
+        data.isValid = true;
+        data.posX = x;
+        data.posZ = z;
+        data.vecY = vy;
+        data.idSuffix = id;
+    }
+
+    HandData SelectHigherTarget(HandData a, HandData b)
+    {
+        if (!a.isValid && !b.isValid) return a;
+        if (!a.isValid) return b;
+        if (!b.isValid) return a;
+        return (a.posZ > b.posZ) ? a : b;
+    }
+
+    int DetermineDirection(bool isRight)
     {
         if (invertLeftRight) isRight = !isRight;
-        if (ignoreForwardBackward) return isRight ? 1 : 2;
-        if (isForward) return isRight ? 1 : 2;
-        return isRight ? 3 : 4;
+        // 「負→正」の反転で入ってくるため、ここは常に前進(1 or 2)を想定
+        return isRight ? 1 : 2;
     }
 
     void SendPaddleDirection(int direction, bool isRight)
@@ -175,60 +180,21 @@ public class PaddleController : MonoBehaviour
         oscManager.SetInt("PaddleDirection", direction);
         oscManager.SendMessage("/paddle");
 
-        _lastSendTime = Time.time;
-
         string side = isRight ? "【右】" : "【左】";
-        string dirName = GetDirectionName(direction);
-        LogDebug($"<color=white><b>[送信] {side} を送信しました！ (方向: {dirName})</b></color>");
+        LogDebug($"<color=lime><b>[最速送信] {side} 符号反転を検知！ (ID: {direction})</b></color>");
 
         onPaddleSent?.Invoke(direction);
     }
 
-    string GetDirectionName(int direction)
-    {
-        switch (direction)
-        {
-            case 1: return "右前進";
-            case 2: return "左前進";
-            case 3: return "右後進";
-            case 4: return "左後進";
-            default: return "不明";
-        }
-    }
-
     #endregion
 
-    #region Public Methods
+    #region Public / Utility
 
-    public Vector3 GetCurrentPosition()
-    {
-        if (oscManager == null) return Vector3.zero;
-        // 基本的に1点目の位置を返す
-        float boxZ = oscManager.GetFloat("BoxZ");
-        return new Vector3(
-            oscManager.GetFloat("PositionX1"),
-            oscManager.GetFloat("PositionY1"),
-            oscManager.GetFloat("PositionZ1") + boxZ * 0.5f
-        );
-    }
-
-    public void SetZMin(float value)
-    {
-        conditionalAxisMin = value;
-        _debugZMin = value;
-    }
-
-    public void SetZMax(float value)
-    {
-        conditionalAxisMax = value;
-        _debugZMax = value;
-    }
-
-    #endregion
+    public void SetZMin(float value) { conditionalAxisMin = value; _debugZMin = value; }
+    public void SetZMax(float value) { conditionalAxisMax = value; _debugZMax = value; }
 
     void LogDebug(string message) { if (enableDebugLog) Debug.Log($"[PaddleController] {message}"); }
 
-    // フレーム内データ保持用
     private struct HandData
     {
         public bool isValid;
@@ -237,4 +203,5 @@ public class PaddleController : MonoBehaviour
         public float vecY;
         public string idSuffix;
     }
+    #endregion
 }
