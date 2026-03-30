@@ -1370,6 +1370,7 @@ MonoBehaviour:
   m_VerticalAlignment: 256
   m_textAlignment: 65535
   m_characterSpacing: 0
+  m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0
@@ -2967,13 +2968,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   oscManager: {fileID: 1708375241}
-  vectorThreshold: 0.25
   xCenterPosition: 0
-  cooldownTime: 0.6
+  cooldownTime: 0
   enableConditionalAxis: 1
   conditionalAxisMin: 0
   conditionalAxisMax: 2
-  ignoreForwardBackward: 1
   invertLeftRight: 0
   onPaddleSent:
     m_PersistentCalls:
@@ -3790,6 +3789,7 @@ MonoBehaviour:
   m_VerticalAlignment: 256
   m_textAlignment: 65535
   m_characterSpacing: 0
+  m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0
@@ -13197,6 +13197,7 @@ MonoBehaviour:
   m_VerticalAlignment: 256
   m_textAlignment: 65535
   m_characterSpacing: 0
+  m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0

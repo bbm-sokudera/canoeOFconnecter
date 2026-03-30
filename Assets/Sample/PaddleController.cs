@@ -110,8 +110,8 @@ public class PaddleController : MonoBehaviour
     /// </summary>
     void CheckFlipAndSend(ref float prevY, ref float cooldown, float currentY, bool isRight)
     {
-        // 条件: クールダウン中ではなく、前回がマイナスで、今回がプラスになった瞬間
-        if (cooldown <= 0 && prevY < 0 && currentY > 0)
+        // 条件: クールダウン中ではなく、前回がプラスで、今回がマイナスになった瞬間を
+        if (cooldown <= 0 && prevY > 0 && currentY < 0)
         {
             int direction = DetermineDirection(isRight);
             SendPaddleDirection(direction, isRight);
