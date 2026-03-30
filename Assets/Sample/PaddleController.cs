@@ -3,8 +3,8 @@ using UnityEngine.Events;
 using System.Collections.Generic;
 
 /// <summary>
-/// 【最新検証版】符号反転検知 ＋ 旋回ロック付き二重チェック(Emergency Y)
-/// 円運動の前進を救済しつつ、旋回時の精度を維持する
+/// 【最終最適化版】符号反転検知 ＋ 左右交互漕ぎ救済ロジック搭載
+/// 円を描く前進モーションの取りこぼしを、二重チェックモードで補完する
 /// </summary>
 public class PaddleController : MonoBehaviour
 {
@@ -15,20 +15,19 @@ public class PaddleController : MonoBehaviour
 
     [Header("Paddle Settings (Y-Flip Logic)")]
     public float xCenterPosition = 0f;
-    [Tooltip("左右個別の送信クールダウン")]
-    public float cooldownTime = 0.15f;
+    public float cooldownTime = 0.1f;
 
-    [Header("Advanced Verification Modes")]
-    [Tooltip("① 二重チェックモード: 符号反転を逃しても、Yベクトルが巨大なら発火")]
+    [Header("Advanced Verification (救済モード)")]
+    [Tooltip("符号反転を逃してもYベクトルが巨大なら発火")]
     public bool enableDoubleCheckMode = true;
-    [Tooltip("救済発火させるYベクトルの最小値")]
+    [Tooltip("救済を発動させるYベクトルの閾値")]
     public float emergencyYThreshold = 0.8f;
-    [Tooltip("同じ側を連打（旋回）した際、救済モードを無効化する時間")]
+    [Tooltip("同じ側を連打した際、救済を封印する時間")]
     public float turnOffsetTime = 0.5f;
 
     [Header("Z-Axis Filtering")]
     public bool enableConditionalAxis = true;
-    public float conditionalAxisMin = 0.45f;
+    public float conditionalAxisMin = 0f;
     public float conditionalAxisMax = 2.0f;
 
     [Header("Mode Settings")]
@@ -51,7 +50,7 @@ public class PaddleController : MonoBehaviour
     private float _rightCooldownTimer = 0f;
     private float _leftCooldownTimer = 0f;
 
-    // 旋回制御用
+    // 救済モード制御用
     private int _lastSentDirection = 0; // 1:右前, 2:左前, 3:右後, 4:左後
     private float _rightTurnBlockTimer = 0f;
     private float _leftTurnBlockTimer = 0f;
@@ -75,8 +74,8 @@ public class PaddleController : MonoBehaviour
     {
         if (_rightCooldownTimer > 0) _rightCooldownTimer -= Time.deltaTime;
         if (_leftCooldownTimer > 0) _leftCooldownTimer -= Time.deltaTime;
-        
-        // 旋回時の救済ロックタイマー
+
+        // 旋回ブロックタイマー（救済制限時間）の更新
         if (_rightTurnBlockTimer > 0) _rightTurnBlockTimer -= Time.deltaTime;
         if (_leftTurnBlockTimer > 0) _leftTurnBlockTimer -= Time.deltaTime;
     }
@@ -90,11 +89,11 @@ public class PaddleController : MonoBehaviour
         int count = oscManager.GetInt("Count");
         if (count <= 0) return;
 
-        // 1. X軸両端抽出（ノイズ対策）
+        // 1. 全点群からX軸の最小・最大の2点を抽出
         HandData leftEnd = GetExtremeXPoint(count, true);
         HandData rightEnd = GetExtremeXPoint(count, false);
 
-        // 2. 高Zターゲット選定
+        // 2. 高い方をアクション対象として選別
         HandData targetPoint = SelectHigherTarget(leftEnd, rightEnd);
         if (!targetPoint.isValid) return;
 
@@ -115,21 +114,22 @@ public class PaddleController : MonoBehaviour
     void CheckFlipAndSend(ref float prevY, ref float cooldown, float currentY, bool isRight)
     {
         bool triggered = false;
+        bool isFlipTriggered = false;
 
         // --- A. 基本ロジック: 符号反転 (- to +) ---
-        // 円運動でもここを通るのが理想だが、漏れた場合をBで救済する
         if (prevY < 0 && currentY > 0)
         {
             triggered = true;
+            isFlipTriggered = true;
         }
 
-        // --- B. ① 二重チェックモード (旋回ブロック機能付き) ---
+        // --- B. ① 二重チェックモード (救済) ---
         if (!triggered && enableDoubleCheckMode)
         {
-            float turnBlockTimer = isRight ? _rightTurnBlockTimer : _leftTurnBlockTimer;
-
-            // 旋回中でない（交互漕ぎである）かつ、Yが閾値を超えていれば救済発火
-            if (turnBlockTimer <= 0 && currentY > emergencyYThreshold)
+            float blockTimer = isRight ? _rightTurnBlockTimer : _leftTurnBlockTimer;
+            
+            // 制限時間が切れている時のみ救済を発動
+            if (blockTimer <= 0 && currentY > emergencyYThreshold)
             {
                 triggered = true;
                 if (enableDebugLog) LogDebug($"救済発火: {(isRight ? "右" : "左")} (Y:{currentY:F2})");
@@ -140,47 +140,50 @@ public class PaddleController : MonoBehaviour
         if (triggered && cooldown <= 0)
         {
             int direction = DetermineDirection(isRight);
-
-            // 旋回判定：前回と同じ側（右:1,3 / 左:2,4）を連続で漕いだか
+            
+            // 旋回判定：前回と同じ側か？
             bool isSameSide = false;
             if (isRight && (_lastSentDirection == 1 || _lastSentDirection == 3)) isSameSide = true;
             if (!isRight && (_lastSentDirection == 2 || _lastSentDirection == 4)) isSameSide = true;
 
+            // 送信
             SendPaddleDirection(direction, isRight);
 
             // 状態更新
             _lastSentDirection = direction;
             cooldown = cooldownTime;
 
-            // 旋回（同側連打）なら救済モードを一定時間ロック
             if (isSameSide)
             {
+                // 旋回（連打）時はタイマーをセットして救済を一時封印
                 if (isRight) _rightTurnBlockTimer = turnOffsetTime;
                 else _leftTurnBlockTimer = turnOffsetTime;
             }
+            else
+            {
+                // 左右交互に来た場合は、両方の救済ブロックを即座に解除（救済復活）
+                _rightTurnBlockTimer = 0;
+                _leftTurnBlockTimer = 0;
+                if (enableDebugLog) LogDebug("左右交互入力を検知：救済ブロックをリセットしました");
+            }
         }
-
+        
         prevY = currentY;
     }
 
-    #endregion
-
-    #region Sub Methods (Min/Max X & Target Selection)
+    // --- 以下、ユーティリティメソッド (既存を維持) ---
 
     HandData GetExtremeXPoint(int count, bool findMin)
     {
         HandData extreme = new HandData { isValid = false, posX = findMin ? 999f : -999f };
         float boxZ = oscManager.GetFloat("BoxZ");
-
         for (int i = 1; i <= count; i++)
         {
             string s = i.ToString();
             float px = oscManager.GetFloat("PositionX" + s);
             float pz = oscManager.GetFloat("PositionZ" + s) + (boxZ * 0.5f);
             float vy = oscManager.GetFloat("VectorY" + s);
-
             if (pz < conditionalAxisMin || pz > conditionalAxisMax) continue;
-
             if (findMin) { if (px < extreme.posX) SetData(ref extreme, px, pz, vy); }
             else { if (px > extreme.posX) SetData(ref extreme, px, pz, vy); }
         }
@@ -189,24 +192,19 @@ public class PaddleController : MonoBehaviour
 
     void SetData(ref HandData data, float x, float z, float vy)
     {
-        data.isValid = true;
-        data.posX = x;
-        data.posZ = z;
-        data.vecY = vy;
+        data.isValid = true; data.posX = x; data.posZ = z; data.vecY = vy;
     }
 
     HandData SelectHigherTarget(HandData a, HandData b)
     {
-        if (!a.isValid && !b.isValid) return a;
-        if (!a.isValid) return b;
-        if (!b.isValid) return a;
+        if (!a.isValid) return b; if (!b.isValid) return a;
         return (a.posZ > b.posZ) ? a : b;
     }
 
     int DetermineDirection(bool isRight)
     {
         if (invertLeftRight) isRight = !isRight;
-        return isRight ? 1 : 2; // 現状は前進のみ
+        return isRight ? 1 : 2;
     }
 
     void SendPaddleDirection(int direction, bool isRight)
@@ -218,9 +216,9 @@ public class PaddleController : MonoBehaviour
 
     public void SetZMin(float value) { conditionalAxisMin = value; _debugZMin = value; }
     public void SetZMax(float value) { conditionalAxisMax = value; _debugZMax = value; }
-    void LogDebug(string message) { if (enableDebugLog) Debug.Log($"[Paddle] {message}"); }
+
+    void LogDebug(string message) { if (enableDebugLog) Debug.Log($"[PaddleController] {message}"); }
 
     private struct HandData { public bool isValid; public float posX; public float posZ; public float vecY; }
-
     #endregion
 }
