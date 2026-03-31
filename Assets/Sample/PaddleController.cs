@@ -117,7 +117,7 @@ public class PaddleController : MonoBehaviour
         bool isFlipTriggered = false;
 
         // --- A. 基本ロジック: 符号反転 (- to +) ---
-        if (prevY < 0 && currentY > 0)
+        if (prevY >= 0 && currentY < 0)
         {
             triggered = true;
             isFlipTriggered = true;

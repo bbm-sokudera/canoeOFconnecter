@@ -2970,6 +2970,9 @@ MonoBehaviour:
   oscManager: {fileID: 1708375241}
   xCenterPosition: 0
   cooldownTime: 0
+  enableDoubleCheckMode: 1
+  emergencyYThreshold: 0.28
+  turnOffsetTime: 2
   enableConditionalAxis: 1
   conditionalAxisMin: 0
   conditionalAxisMax: 2
