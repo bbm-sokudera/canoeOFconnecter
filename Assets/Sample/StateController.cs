@@ -141,7 +141,7 @@ public class StateController : MonoBehaviour
     void UpdateStateDisplay()
     {
         string stateName = GetStateName(_currentState);
-        string displayText = $"State: {(int)_currentState} - {stateName}";
+        string displayText = $" {(int)_currentState} - {stateName}";
 
         // UI.Text対応
         if (stateDisplayText != null)

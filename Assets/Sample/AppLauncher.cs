@@ -41,15 +41,11 @@ public class AppLauncher : MonoBehaviour {
     [Header("監視設定")]
     public float checkInterval = 3.0f;
 
-    [Header("キー設定 (InputCentralManagerで使用)")]
-    [Tooltip("削除（終了）モードに切り替えるキー")]
-    public KeyCode deleteModeKey = KeyCode.KeypadDivide;
-
     private Coroutine monitorCoroutine;
+    private Coroutine switchCoroutine;
     private string currentActiveProcessName;
     private IntPtr unityWindowHandle;
     private int selectedIndex = -1;
-    private bool isDeleteMode = false;
 
     void Awake() {
         LoadConfig();
@@ -64,31 +60,109 @@ public class AppLauncher : MonoBehaviour {
 
     public void SelectIndex(int num) {
         selectedIndex = num;
-        isDeleteMode = false;
-        UnityEngine.Debug.Log($"[AppLauncher] App Index {num} selected. Waiting for Enter...");
+        UnityEngine.Debug.Log($"[AppLauncher] Index {num} selected.");
     }
 
     public void SetDeleteMode(bool active) {
-        if (selectedIndex == -1) return;
-        isDeleteMode = active;
-        UnityEngine.Debug.Log($"[AppLauncher] Delete Mode: {active}");
+        // 元のインターフェース維持のため残していますが、機能は削除
     }
 
     public void Execute() {
         if (selectedIndex == -1) return;
 
-        // 7, 8, 9キー を appsリストの 0, 1, 2番目 に対応させる
+        // 7キー -> Index 0, 8キー -> Index 1, 9キー -> Index 2
         int targetIdx = selectedIndex - 7; 
-
-        if (isDeleteMode) CloseAppByIndex(targetIdx);
-        else LaunchByIndex(targetIdx);
+        
+        // LaunchByIndex 内で排他制御(0番と2番の入れ替え)を行う
+        LaunchByIndex(targetIdx);
 
         selectedIndex = -1;
-        isDeleteMode = false;
     }
     #endregion
 
     #region App Logic
+
+    /// <summary>
+    /// アプリを起動する。0番と2番は相互に終了を確認してから起動する。
+    /// </summary>
+    public void LaunchByIndex(int index) {
+        if (index < 0 || index >= configData.apps.Count) return;
+
+        // 既存の切り替え処理があれば止める
+        if (switchCoroutine != null) StopCoroutine(switchCoroutine);
+
+        if (index == 0) {
+            // 0番起動時は、2番を終了させてから起動するフローへ
+            switchCoroutine = StartCoroutine(SwitchAppSequence(2, 0));
+        }
+        else if (index == 2) {
+            // 2番起動時は、0番を終了させてから起動するフローへ
+            switchCoroutine = StartCoroutine(SwitchAppSequence(0, 2));
+        }
+        else {
+            // それ以外（1番など）は通常起動
+            ExecuteLaunch(index);
+        }
+    }
+
+    /// <summary>
+    /// 指定インデックスのアプリを終了し、完全に閉じたのを確認してから次を起動する
+    /// </summary>
+    private IEnumerator SwitchAppSequence(int closeIdx, int launchIdx) {
+        UnityEngine.Debug.Log($"[AppLauncher] Switching: Closing Index {closeIdx} -> Launching Index {launchIdx}");
+        
+        // 1. 対象を閉じる
+        CloseAppByIndex(closeIdx);
+
+        // 2. 完全に終了するまで待機（最大5秒）
+        if (closeIdx >= 0 && closeIdx < configData.apps.Count) {
+            string procName = Path.GetFileNameWithoutExtension(configData.apps[closeIdx].path);
+            float timer = 0;
+            while (timer < 5.0f) {
+                if (Process.GetProcessesByName(procName).Length == 0) break;
+                timer += 0.5f;
+                yield return new WaitForSeconds(0.5f);
+            }
+        }
+
+        // 3. 次を起動
+        ExecuteLaunch(launchIdx);
+    }
+
+    /// <summary>
+    /// 実際のOSプロセス起動処理
+    /// </summary>
+    private void ExecuteLaunch(int index) {
+        string path = configData.apps[index].path;
+        if (!File.Exists(path)) {
+            UnityEngine.Debug.LogError($"[AppLauncher] File not found: {path}");
+            return;
+        }
+
+        currentActiveProcessName = Path.GetFileNameWithoutExtension(path);
+        Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true });
+
+        // 監視ループを再開
+        if (monitorCoroutine != null) StopCoroutine(monitorCoroutine);
+        monitorCoroutine = StartCoroutine(ForceFocusLoop());
+    }
+
+    public void CloseAppByIndex(int index) {
+        if (index < 0 || index >= configData.apps.Count) return;
+        
+        string procName = Path.GetFileNameWithoutExtension(configData.apps[index].path);
+        Process[] running = Process.GetProcessesByName(procName);
+        
+        foreach (Process p in running) {
+            try {
+                p.CloseMainWindow();
+                if (!p.WaitForExit(2000)) p.Kill();
+            } catch (Exception e) {
+                UnityEngine.Debug.LogWarning($"[AppLauncher] Failed to close {procName}: {e.Message}");
+            }
+        }
+    }
+
     [ContextMenu("Load Config Now")]
     public void LoadConfig() {
         string path = "";
@@ -109,34 +183,21 @@ public class AppLauncher : MonoBehaviour {
         SetWindowPos(unityWindowHandle, top ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
     }
 
-    public void LaunchByIndex(int index) {
-        if (index < 0 || index >= configData.apps.Count) return;
-        string path = configData.apps[index].path;
-        currentActiveProcessName = Path.GetFileNameWithoutExtension(path);
-        Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true });
-        if (monitorCoroutine != null) StopCoroutine(monitorCoroutine);
-        monitorCoroutine = StartCoroutine(ForceFocusLoop());
-    }
-
-    public void CloseAppByIndex(int index) {
-        if (index < 0 || index >= configData.apps.Count) return;
-        string procName = Path.GetFileNameWithoutExtension(configData.apps[index].path);
-        Process[] running = Process.GetProcessesByName(procName);
-        foreach (Process p in running) { p.CloseMainWindow(); if (!p.WaitForExit(2000)) p.Kill(); }
-    }
-
     IEnumerator ForceFocusLoop() {
         while (true) {
             yield return new WaitForSeconds(checkInterval);
             if (string.IsNullOrEmpty(currentActiveProcessName)) continue;
+
             Process[] ps = Process.GetProcessesByName(currentActiveProcessName);
-            if (ps.Length > 0 && GetForegroundWindow() != ps[0].MainWindowHandle) {
-                SetUnityAlwaysOnTop(false);
+            if (ps.Length > 0) {
                 IntPtr hWnd = ps[0].MainWindowHandle;
-                if (IsIconic(hWnd)) ShowWindow(hWnd, SW_RESTORE);
-                SetForegroundWindow(hWnd);
-                yield return new WaitForSeconds(0.1f);
-                SetUnityAlwaysOnTop(true);
+                if (hWnd != IntPtr.Zero && GetForegroundWindow() != hWnd) {
+                    SetUnityAlwaysOnTop(false);
+                    if (IsIconic(hWnd)) ShowWindow(hWnd, SW_RESTORE);
+                    SetForegroundWindow(hWnd);
+                    yield return new WaitForSeconds(0.1f);
+                    SetUnityAlwaysOnTop(true);
+                }
             }
         }
     }
