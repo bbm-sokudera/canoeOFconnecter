@@ -1422,6 +1422,7 @@ MonoBehaviour:
   m_VerticalAlignment: 256
   m_textAlignment: 65535
   m_characterSpacing: 0
+  m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0
@@ -3848,6 +3849,7 @@ MonoBehaviour:
   m_VerticalAlignment: 256
   m_textAlignment: 65535
   m_characterSpacing: 0
+  m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0
@@ -5512,8 +5514,6 @@ MeshRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
-  m_ForceMeshLod: -1
-  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -5535,7 +5535,6 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
-  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
@@ -8445,6 +8444,7 @@ MonoBehaviour:
   m_VerticalAlignment: 256
   m_textAlignment: 65535
   m_characterSpacing: 0
+  m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0
@@ -10578,14 +10578,14 @@ MonoBehaviour:
   - targetAddress: /state
     targetUIImage: {fileID: 1456038497}
     connectedSprite: {fileID: 21300000, guid: d3a3f8d5fd66f4d478d48f222b5cfdfa, type: 3}
-    disconnectedSprite: {fileID: 21300000, guid: 7f34aa91d18bcca4698d7798427291e3,
+    disconnectedSprite: {fileID: 21300000, guid: 8fcbc73543f14f44786e6273162aad29,
       type: 3}
     timeoutSeconds: 10
     lastReceiveTime: 0
   - targetAddress: /box
     targetUIImage: {fileID: 1442947553}
     connectedSprite: {fileID: 21300000, guid: 9d9307b1c6344094bae6eca316e4781b, type: 3}
-    disconnectedSprite: {fileID: 21300000, guid: cb35b5405e931e444acc60e844dc730f,
+    disconnectedSprite: {fileID: 21300000, guid: bc328cfab524e7749944ab8c7c9aefa6,
       type: 3}
     timeoutSeconds: 10
     lastReceiveTime: 0
@@ -11615,8 +11615,6 @@ MeshRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
-  m_ForceMeshLod: -1
-  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -11638,7 +11636,6 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
-  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
@@ -13698,6 +13695,7 @@ MonoBehaviour:
   m_VerticalAlignment: 256
   m_textAlignment: 65535
   m_characterSpacing: 0
+  m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0

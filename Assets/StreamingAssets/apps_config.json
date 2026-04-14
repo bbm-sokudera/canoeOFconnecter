@@ -2,7 +2,7 @@
   "apps": [
     {
       "name": "Femto Controller",
-      "path": "C:\\bbmedia\\FemtoController\\FemtoController.exe"
+      "path": "C:\\bbmedia\\FemtoController\\FemtoController_Kalman.exe"
     },
     {
       "name": "Unity App B",
@@ -10,11 +10,11 @@
     },
     {
       "name": "Camera App",
-      "path": "C:\\Users\\RH-2407013\\Desktop\\canoe_camera\\camera.exe"
+      "path": "C:\\Users\\Takikawa_canoe01\\Desktop\\00_Canoe\\canoe_camera\\camera.exe"
     },
     {
       "name": "Femto Controller",
-      "path": "C:\\bbmedia\\FemtoController\\FemtoController.exe"
+      "path": "C:\\bbmedia\\FemtoController\\FemtoController_Kalman.exe"
     },
     {
       "name": "Unity App B",
