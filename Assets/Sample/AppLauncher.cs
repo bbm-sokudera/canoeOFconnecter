@@ -40,6 +40,8 @@ public class AppLauncher : MonoBehaviour {
 
     [Header("監視設定")]
     public float checkInterval = 3.0f;
+    [Tooltip("終了確認後の待機時間（秒）")]
+    public float waitBeforeLaunch = 1.0f;
 
     private Coroutine monitorCoroutine;
     private Coroutine switchCoroutine;
@@ -63,9 +65,7 @@ public class AppLauncher : MonoBehaviour {
         UnityEngine.Debug.Log($"[AppLauncher] Index {num} selected.");
     }
 
-    public void SetDeleteMode(bool active) {
-        // 元のインターフェース維持のため残していますが、機能は削除
-    }
+    public void SetDeleteMode(bool active) { } // インターフェース互換性のため維持
 
     public void Execute() {
         if (selectedIndex == -1) return;
@@ -73,7 +73,6 @@ public class AppLauncher : MonoBehaviour {
         // 7キー -> Index 0, 8キー -> Index 1, 9キー -> Index 2
         int targetIdx = selectedIndex - 7; 
         
-        // LaunchByIndex 内で排他制御(0番と2番の入れ替え)を行う
         LaunchByIndex(targetIdx);
 
         selectedIndex = -1;
@@ -83,55 +82,63 @@ public class AppLauncher : MonoBehaviour {
     #region App Logic
 
     /// <summary>
-    /// アプリを起動する。0番と2番は相互に終了を確認してから起動する。
+    /// アプリを起動する。二重起動防止のため、対象（および相互排他対象）を終了してから起動する。
     /// </summary>
     public void LaunchByIndex(int index) {
         if (index < 0 || index >= configData.apps.Count) return;
 
-        // 既存の切り替え処理があれば止める
         if (switchCoroutine != null) StopCoroutine(switchCoroutine);
 
-        if (index == 0) {
-            // 0番起動時は、2番を終了させてから起動するフローへ
-            switchCoroutine = StartCoroutine(SwitchAppSequence(2, 0));
-        }
-        else if (index == 2) {
-            // 2番起動時は、0番を終了させてから起動するフローへ
-            switchCoroutine = StartCoroutine(SwitchAppSequence(0, 2));
-        }
-        else {
-            // それ以外（1番など）は通常起動
-            ExecuteLaunch(index);
-        }
+        List<int> targetsToClose = new List<int>();
+
+        // 全てのケースで「自分自身」は終了対象（二重起動防止）
+        targetsToClose.Add(index);
+
+        // 相互排他ルール (0番と2番)
+        if (index == 0) targetsToClose.Add(2);
+        else if (index == 2) targetsToClose.Add(0);
+
+        // 終了プロセスを経てから起動するコルーチンを開始
+        switchCoroutine = StartCoroutine(SwitchAppSequence(targetsToClose, index));
     }
 
     /// <summary>
-    /// 指定インデックスのアプリを終了し、完全に閉じたのを確認してから次を起動する
+    /// 対象アプリ群を終了し、完全に閉じたのを確認＋待機してから次を起動する
     /// </summary>
-    private IEnumerator SwitchAppSequence(int closeIdx, int launchIdx) {
-        UnityEngine.Debug.Log($"[AppLauncher] Switching: Closing Index {closeIdx} -> Launching Index {launchIdx}");
+    private IEnumerator SwitchAppSequence(List<int> closeIndices, int launchIdx) {
+        UnityEngine.Debug.Log($"[AppLauncher] Cleanup start for launching Index {launchIdx}");
         
-        // 1. 対象を閉じる
-        CloseAppByIndex(closeIdx);
+        // 1. 対象のアプリをすべて閉じる
+        foreach (int idx in closeIndices) {
+            CloseAppByIndex(idx);
+        }
 
-        // 2. 完全に終了するまで待機（最大5秒）
-        if (closeIdx >= 0 && closeIdx < configData.apps.Count) {
-            string procName = Path.GetFileNameWithoutExtension(configData.apps[closeIdx].path);
-            float timer = 0;
-            while (timer < 5.0f) {
-                if (Process.GetProcessesByName(procName).Length == 0) break;
+        // 2. すべての対象プロセスが終了するまで待機（最大5秒）
+        float timer = 0;
+        bool anyRunning = true;
+        while (timer < 5.0f && anyRunning) {
+            anyRunning = false;
+            foreach (int idx in closeIndices) {
+                if (idx < 0 || idx >= configData.apps.Count) continue;
+                string procName = Path.GetFileNameWithoutExtension(configData.apps[idx].path);
+                if (Process.GetProcessesByName(procName).Length > 0) {
+                    anyRunning = true;
+                    break;
+                }
+            }
+            if (anyRunning) {
                 timer += 0.5f;
                 yield return new WaitForSeconds(0.5f);
             }
         }
 
-        // 3. 次を起動
+        // 3. 完全に終了した後、指定秒数さらに待機（安定化のため）
+        yield return new WaitForSeconds(waitBeforeLaunch);
+
+        // 4. アプリ起動
         ExecuteLaunch(launchIdx);
     }
 
-    /// <summary>
-    /// 実際のOSプロセス起動処理
-    /// </summary>
     private void ExecuteLaunch(int index) {
         string path = configData.apps[index].path;
         if (!File.Exists(path)) {
@@ -140,9 +147,13 @@ public class AppLauncher : MonoBehaviour {
         }
 
         currentActiveProcessName = Path.GetFileNameWithoutExtension(path);
-        Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true });
+        try {
+            Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true });
+            UnityEngine.Debug.Log($"[AppLauncher] Launched: {currentActiveProcessName}");
+        } catch (Exception e) {
+            UnityEngine.Debug.LogError($"[AppLauncher] Launch failed: {e.Message}");
+        }
 
-        // 監視ループを再開
         if (monitorCoroutine != null) StopCoroutine(monitorCoroutine);
         monitorCoroutine = StartCoroutine(ForceFocusLoop());
     }
